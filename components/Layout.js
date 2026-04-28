@@ -37,7 +37,7 @@ export default function Layout({ children, title = '', action }) {
 
           <div className="p-4 border-b" style={{borderColor:'rgba(255,255,255,0.1)'}}>
             <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center justify-center py-1">
-              <img src="/logo-ar-rawdah.png" alt="Ar Rawdah" className="h-10 w-auto object-contain"
+              <img src="/logo-ar-rawdah.png" alt="Ar Rawdah" className="h-14 w-auto object-contain"
                 style={{filter:'brightness(0) invert(1)'}}
                 onError={e => { e.target.style.display='none' }} />
             </Link>
