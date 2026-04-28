@@ -7,16 +7,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          dark:  '#0F5229',
-          mid:   '#1A7A3C',
-          light: '#2ECC71',
-        },
-        gold: {
-          DEFAULT: '#C9A84C',
-          light:   '#F0D080',
-        }
-      }
+        brand: { dark: '#0F5229', mid: '#1A7A3C', light: '#2ECC71' },
+        gold:  { DEFAULT: '#C9A84C', light: '#F0D080' },
+      },
+      screens: { xs: '375px' },
     }
   },
   plugins: [],
