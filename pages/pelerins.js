@@ -12,7 +12,7 @@ const STATUT_CONFIG = {
 
 const EMPTY = {
   prenom: '', nom: '', telephone: '', tel_famille: '',
-  date_naissance: '', formule: 'ZEN', prix_total: 0,
+  date_naissance: '', sexe: 'homme', formule: 'ZEN', prix_total: 0,
   montant_paye: 0, depart_id: '', num_passeport: '',
   exp_passeport: '', medical: '', statut: 'inscrit',
   doc_passeport: false, doc_photo: false, doc_vaccin: false,
@@ -140,7 +140,7 @@ export default function Pelerins() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-800 truncate">{p.prenom} {p.nom}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">{getDep(p.depart_id)} · {p.formule}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">{getDep(p.depart_id)} · {p.formule} · {p.sexe === 'femme' ? '👩' : '👨'}</div>
                     </div>
                     {/* Statut paiement */}
                     <div className="text-right flex-shrink-0">
@@ -259,6 +259,12 @@ export default function Pelerins() {
           <div><label className="label">Téléphone</label><input className="input" value={form.telephone} onChange={e => set('telephone', e.target.value)} placeholder="+221 77 000 00 00" /></div>
           <div><label className="label">Téléphone famille</label><input className="input" value={form.tel_famille} onChange={e => set('tel_famille', e.target.value)} placeholder="+221 77 000 00 00" /></div>
           <div><label className="label">Date de naissance</label><input className="input" type="date" value={form.date_naissance} onChange={e => set('date_naissance', e.target.value)} /></div>
+          <div><label className="label">Sexe *</label>
+            <select className="input" value={form.sexe} onChange={e => set('sexe', e.target.value)}>
+              <option value="homme">👨 Homme</option>
+              <option value="femme">👩 Femme</option>
+            </select>
+          </div>
           <div><label className="label">Statut</label>
             <select className="input" value={form.statut} onChange={e => set('statut', e.target.value)}>
               {Object.entries(STATUT_CONFIG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
