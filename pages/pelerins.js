@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import { supabase } from '../lib/supabase'
@@ -12,11 +13,11 @@ const STATUT_CONFIG = {
 
 const EMPTY = {
   prenom: '', nom: '', telephone: '', tel_famille: '',
-  date_naissance: '', sexe: 'homme', formule: 'ZEN', prix_total: 0,
+  date_naissance: '', sexe: 'homme', premiere_oumrah: true, formule: 'ZEN', prix_total: 0,
   montant_paye: 0, depart_id: '', num_passeport: '',
   exp_passeport: '', medical: '', statut: 'inscrit',
   doc_passeport: false, doc_photo: false, doc_vaccin: false,
-  doc_visa: false, doc_billet: false,
+  doc_visa: false, doc_billet: false, notes: '',
 }
 
 function getInitials(p) {
@@ -32,6 +33,7 @@ function getDossierStatus(p) {
 }
 
 export default function Pelerins() {
+  const router = useRouter()
   const [pelerins, setPelerins] = useState([])
   const [departs, setDeparts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -238,9 +240,14 @@ export default function Pelerins() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                <div className="flex gap-2 pt-2 border-t border-gray-100 flex-wrap">
                   <button onClick={() => { setForm({ ...sel, depart_id: sel.depart_id || '' }); setModalOpen(true) }}
                     className="btn btn-primary flex-1 text-sm">✏️ Modifier</button>
+                  <a href={`/pelerins/${sel.id}/imprimer`} target="_blank"
+                    className="btn text-sm flex items-center gap-1"
+                    style={{background:'#F0FFF4',borderColor:'#A7F3D0',color:'#0F5229',textDecoration:'none'}}>
+                    🖨️ Imprimer
+                  </a>
                   <button onClick={() => supprimer(sel.id)}
                     className="btn btn-danger text-sm">🗑️ Supprimer</button>
                 </div>
@@ -291,6 +298,15 @@ export default function Pelerins() {
           <div><label className="label">N° Passeport</label><input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" /></div>
           <div><label className="label">Expiration passeport</label><input className="input" type="date" value={form.exp_passeport} onChange={e => set('exp_passeport', e.target.value)} /></div>
           <div className="col-span-2"><label className="label">Informations médicales</label><input className="input" value={form.medical} onChange={e => set('medical', e.target.value)} placeholder="Tension, diabète..." /></div>
+          <div><label className="label">Première Oumrah ?</label>
+            <select className="input" value={form.premiere_oumrah ? 'true' : 'false'} onChange={e => set('premiere_oumrah', e.target.value === 'true')}>
+              <option value="true">⭐ Oui — Première Oumrah</option>
+              <option value="false">Non — Déjà effectué</option>
+            </select>
+          </div>
+          <div className="col-span-2"><label className="label">Notes internes</label>
+            <textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Notes de l'équipe..." style={{minHeight:'60px',resize:'vertical'}} />
+          </div>
           <div className="col-span-2">
             <label className="label">Documents reçus</label>
             <div className="flex flex-wrap gap-4 mt-2">
