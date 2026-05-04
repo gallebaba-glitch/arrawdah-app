@@ -51,7 +51,7 @@ export default function Layout({ children, title = '', action }) {
           >
             <Link href="/" onClick={() => setMenuOpen(false)}>
               <img
-                src="/logo-ar-rawdah.png"
+                src="/logo-ar-rawdah.svg"
                 alt="Ar Rawdah"
                 className="h-40 w-auto object-contain"
                 style={{ filter: 'brightness(0) invert(1)' }}
