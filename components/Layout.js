@@ -46,7 +46,7 @@ export default function Layout({ children, title = '', action }) {
 
           {/* LOGO */}
           <div
-            className="p-4 border-b flex justify-center"
+            className="p-2 border-b flex justify-center"
             style={{ borderColor: 'rgba(255,255,255,0.1)' }}
           >
             <Link href="/" onClick={() => setMenuOpen(false)}>
