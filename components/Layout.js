@@ -53,7 +53,7 @@ export default function Layout({ children, title = '', action }) {
               <img
                 src="/logo-ar-rawdah.svg"
                 alt="Ar Rawdah"
-                className="h-40 w-auto object-contain"
+                className="h-30 w-auto object-contain"
                 style={{}}
                 onError={(e) => { e.target.style.display = 'none' }}
               />
