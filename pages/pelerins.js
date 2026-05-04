@@ -249,6 +249,11 @@ export default function Pelerins() {
                     style={{background:'#F0FFF4',borderColor:'#A7F3D0',color:'#0F5229',textDecoration:'none'}}>
                     🖨️ Imprimer
                   </a>
+                  <a href={`/pelerins/${sel.id}/facture`} target="_blank"
+                    className="btn text-sm flex items-center gap-1"
+                    style={{background:'#FEF9E7',borderColor:'#F9E79F',color:'#B7950B',textDecoration:'none'}}>
+                    🧾 Facture
+                  </a>
                   <button onClick={() => supprimer(sel.id)}
                     className="btn btn-danger text-sm">🗑️ Supprimer</button>
                 </div>
