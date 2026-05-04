@@ -53,7 +53,7 @@ export default function Layout({ children, title = '', action }) {
               <img
                 src="/logo-ar-rawdah.png"
                 alt="Ar Rawdah"
-                className="h-12 w-auto object-contain"
+                className="h-20 w-auto object-contain"
                 style={{ filter: 'brightness(0) invert(1)' }}
                 onError={(e) => { e.target.style.display = 'none' }}
               />
