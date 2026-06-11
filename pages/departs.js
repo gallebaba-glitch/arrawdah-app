@@ -37,56 +37,71 @@ function statutGlobal(pelerins){
 // ─── GÉNÉRATION AUTO CHAMBRES ─────────────────────
 // Construit les chambres depuis chambre_numero sauvegardé OU auto
 function buildChambres(pelerins) {
-  // Pèlerins avec chambre assignée
   const assigned = pelerins.filter(p => p.chambre_numero != null)
   const unassigned = pelerins.filter(p => p.chambre_numero == null)
 
-  // Regrouper par numéro de chambre
+  // Regrouper les assignés par numéro de chambre
   const byNum = {}
   assigned.forEach(p => {
     if (!byNum[p.chambre_numero]) byNum[p.chambre_numero] = []
     byNum[p.chambre_numero].push(p)
   })
 
-  // Si des assignations existent, les utiliser
-  if (assigned.length > 0) {
-    const chambres = Object.entries(byNum).map(([num, pels]) => {
-      // Détecter formule et sexe majoritaires
-      const formule = pels[0]?.formule || 'ZEN'
-      const sexe = pels[0]?.sexe || 'homme'
-      const capBase = formule === 'ELITE' ? 2 : 4
-      return {
-        id: `ch_${num}`,
-        numero: parseInt(num),
-        formule, sexe,
-        cap: Math.max(capBase, pels.length),
-        pelerins: pels,
-        saved: true
-      }
-    }).sort((a,b) => a.numero - b.numero)
-    return { chambres, nonAssignes: unassigned }
+  // Construire les chambres sauvegardées
+  let chambres = Object.entries(byNum).map(([num, pels]) => {
+    const formule = pels[0]?.formule || 'ZEN'
+    const sexe = pels[0]?.sexe || 'homme'
+    const capBase = formule === 'ELITE' ? 2 : 4
+    return {
+      id: `ch_${num}`,
+      numero: parseInt(num),
+      formule, sexe,
+      cap: Math.max(capBase, pels.length),
+      pelerins: pels,
+      saved: true
+    }
+  }).sort((a,b) => a.numero - b.numero)
+
+  // Répartir automatiquement les non assignés par groupe formule+sexe
+  if (unassigned.length > 0) {
+    const g = { ZEN_homme:[], ZEN_femme:[], ELITE_homme:[], ELITE_femme:[] }
+    unassigned.forEach(p => {
+      const k = `${p.formule}_${p.sexe||'homme'}`
+      if (g[k]) g[k].push(p)
+    })
+
+    // Numéro de départ = max des chambres existantes + 1
+    let nextNum = chambres.length > 0 ? Math.max(...chambres.map(c => c.numero)) + 1 : 1
+
+    Object.entries(g).forEach(([key, liste]) => {
+      if (!liste.length) return
+      const [formule, sexe] = key.split('_')
+      const cap = formule === 'ELITE' ? 2 : 4
+
+      // Essayer d'abord de remplir les chambres existantes compatibles
+      liste.forEach(p => {
+        const compatible = chambres.find(c =>
+          c.formule === formule &&
+          c.sexe === sexe &&
+          c.pelerins.length < c.cap
+        )
+        if (compatible) {
+          compatible.pelerins = [...compatible.pelerins, p]
+        } else {
+          // Créer une nouvelle chambre
+          const newCh = {
+            id: `auto_${nextNum}`,
+            numero: nextNum++,
+            formule, sexe, cap,
+            pelerins: [p],
+            saved: false
+          }
+          chambres.push(newCh)
+        }
+      })
+    })
   }
 
-  // Sinon génération automatique
-  const g = { ZEN_homme:[], ZEN_femme:[], ELITE_homme:[], ELITE_femme:[] }
-  pelerins.forEach(p => {
-    const k = `${p.formule}_${p.sexe||'homme'}`
-    if (g[k]) g[k].push(p)
-  })
-  const chambres = []; let num = 1
-  Object.entries(g).forEach(([key, liste]) => {
-    if (!liste.length) return
-    const [formule, sexe] = key.split('_')
-    const cap = formule === 'ELITE' ? 2 : 4
-    for (let i = 0; i < liste.length; i += cap) {
-      chambres.push({
-        id: `auto_${num}`,
-        numero: num++, formule, sexe, cap,
-        pelerins: liste.slice(i, i+cap),
-        saved: false
-      })
-    }
-  })
   return { chambres, nonAssignes: [] }
 }
 
