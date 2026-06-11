@@ -451,7 +451,23 @@ export default function Departs() {
                       {/* Barre actions */}
                       <div className="flex items-center justify-between mb-3 gap-2">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {chambresEdit ? '✏️ Modifications en cours' : chambresBase[0]?.saved ? '💾 Sauvegardé' : '🔄 Auto'}
+                          <div className="flex items-center justify-between mb-3 gap-2">
+  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+    {chambresEdit ? '✏️ Modifications en cours' : '🔄 Répartition'}
+  </div>
+  <div className="flex gap-2">
+    <button onClick={reinitialiserChambres}
+      className="text-xs px-2 py-1 rounded-lg border"
+      style={{ borderColor: '#E5EDE8', color: '#666' }}>
+      🔄 Réinitialiser
+    </button>
+    <button onClick={sauvegarderChambres} disabled={saving}
+      className="text-xs px-3 py-1 rounded-lg text-white font-semibold"
+      style={{ background: saving ? '#6B9E7A' : '#0F5229' }}>
+      {saving ? 'Sauvegarde...' : '💾 Sauvegarder'}
+    </button>
+  </div>
+</div>
                         </div>
                         <div className="flex gap-2">
                           {chambresEdit && (
