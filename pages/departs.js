@@ -299,13 +299,20 @@ export default function Departs() {
   }
 
   function printChambres() {
+    const labelCh = (c) => {
+      const h = c.pelerins.filter(p => p.sexe !== 'femme').length
+      const f = c.pelerins.filter(p => p.sexe === 'femme').length
+      if (h > 0 && f > 0) return 'Couple'
+      if (f > 0) return 'Femmes'
+      return 'Hommes'
+    }
     const win = window.open('', '_blank')
     win.document.write(`<html><head><title>Chambres ${sel.nom}</title>
     <style>body{font-family:Arial;padding:20px}h2{color:#0F5229}.ch{border:1px solid #ddd;margin:10px 0;border-radius:8px;overflow:hidden}
     .ch-h{background:#0F5229;color:white;padding:8px 12px;font-weight:bold}.ch-b{padding:8px 12px}p{margin:2px 0}</style></head><body>
     <h2>Répartition des chambres — ${sel.nom}</h2>
-    ${chambres.map(c=>`<div class="ch"><div class="ch-h">Chambre ${c.numero} — ${c.sexe==='femme'?'Femmes':'Hommes'} · ${c.formule} (${c.pelerins.length}/${c.cap})</div>
-    <div class="ch-b">${c.pelerins.map(p=>`<p>• ${p.prenom} ${p.nom}</p>`).join('')}
+    ${chambres.map(c=>`<div class="ch"><div class="ch-h">Chambre ${c.numero} — ${labelCh(c)} · ${c.formule} (${c.pelerins.length}/${c.cap})</div>
+    <div class="ch-b">${c.pelerins.map(p=>`<p>• ${p.prenom} ${p.nom} (${p.sexe === 'femme' ? 'F' : 'H'})</p>`).join('')}
     ${Array.from({length:c.cap-c.pelerins.length}).map(()=>'<p style="color:#ccc">— Place disponible</p>').join('')}
     </div></div>`).join('')}
     </body></html>`)
@@ -503,7 +510,15 @@ export default function Departs() {
                           <div className="flex items-center justify-between px-3 py-2"
                             style={{ background: ch.sexe === 'femme' ? '#FFF0F6' : '#EFF8FF' }}>
                             <div className="text-xs font-bold text-gray-700">
-                              Chambre {ch.numero} — {ch.sexe === 'femme' ? '👩 F' : '👨 H'} · {ch.formule}
+                              Chambre {ch.numero} — {
+                                (() => {
+                                  const h = ch.pelerins.filter(p => p.sexe !== 'femme').length
+                                  const f = ch.pelerins.filter(p => p.sexe === 'femme').length
+                                  if (h > 0 && f > 0) return '👫 Couple'
+                                  if (f > 0) return '👩 Femmes'
+                                  return '👨 Hommes'
+                                })()
+                              } · {ch.formule}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
@@ -584,7 +599,15 @@ export default function Departs() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-semibold">
-                          Chambre {c.numero} — {c.sexe === 'femme' ? '👩 F' : '👨 H'} · {c.formule}
+                          Chambre {c.numero} — {
+                            (() => {
+                              const h = c.pelerins.filter(p => p.sexe !== 'femme').length
+                              const f = c.pelerins.filter(p => p.sexe === 'femme').length
+                              if (h > 0 && f > 0) return '👫 Couple'
+                              if (f > 0) return '👩 Femmes'
+                              return '👨 Hommes'
+                            })()
+                          } · {c.formule}
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">
                           {c.pelerins.map(p => `${p.prenom} ${p.nom}`).join(', ') || 'Vide'}
