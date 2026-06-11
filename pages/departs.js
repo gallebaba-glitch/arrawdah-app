@@ -299,6 +299,32 @@ export default function Departs() {
   }
 
   function printChambres() {
+  const win = window.open('', '_blank')
+
+  const labelChambre = (c) => {
+    const hommes = c.pelerins.filter(p => p.sexe !== 'femme').length
+    const femmes = c.pelerins.filter(p => p.sexe === 'femme').length
+    if (hommes === 1 && femmes === 1) return '👫 Couple'
+    if (femmes > 0 && hommes === 0) return '👩 Femmes'
+    if (hommes > 0 && femmes === 0) return '👨 Hommes'
+    return '👫 Mixte'
+  }
+
+  win.document.write(`<html><head><title>Chambres ${sel.nom}</title>
+  <style>body{font-family:Arial;padding:20px}h2{color:#0F5229}.ch{border:1px solid #ddd;margin:10px 0;border-radius:8px;overflow:hidden}
+  .ch-h{background:#0F5229;color:white;padding:8px 12px;font-weight:bold}.ch-b{padding:8px 12px}p{margin:2px 0}</style></head><body>
+  <h2>Répartition des chambres — ${sel.nom}</h2>
+  ${chambres.map(c => `<div class="ch">
+    <div class="ch-h">Chambre ${c.numero} — ${labelChambre(c)} · ${c.formule} (${c.pelerins.length}/${c.cap})</div>
+    <div class="ch-b">
+      ${c.pelerins.map(p => `<p>• ${p.prenom} ${p.nom} (${p.sexe === 'femme' ? 'F' : 'H'})</p>`).join('')}
+      ${Array.from({length: c.cap - c.pelerins.length}).map(() => '<p style="color:#ccc">— Place disponible</p>').join('')}
+    </div>
+  </div>`).join('')}
+  </body></html>`)
+  win.document.close()
+  win.print()
+}
     const win = window.open('', '_blank')
     win.document.write(`<html><head><title>Chambres ${sel.nom}</title>
     <style>body{font-family:Arial;padding:20px}h2{color:#0F5229}.ch{border:1px solid #ddd;margin:10px 0;border-radius:8px;overflow:hidden}
