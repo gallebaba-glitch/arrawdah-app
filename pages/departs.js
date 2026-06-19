@@ -78,7 +78,8 @@ function buildChambres(pelerins) {
       const [formule, sexe] = key.split('_')
       const cap = formule === 'ELITE' ? 2 : 4
 
-      // Essayer d'abord de remplir les chambres existantes compatibles
+      // D'abord remplir les chambres existantes compatibles
+      const restants = []
       liste.forEach(p => {
         const compatible = chambres.find(c =>
           c.formule === formule &&
@@ -88,17 +89,22 @@ function buildChambres(pelerins) {
         if (compatible) {
           compatible.pelerins = [...compatible.pelerins, p]
         } else {
-          // Créer une nouvelle chambre
-          const newCh = {
-            id: `auto_${nextNum}`,
-            numero: nextNum++,
-            formule, sexe, cap,
-            pelerins: [p],
-            saved: false
-          }
-          chambres.push(newCh)
+          restants.push(p)
         }
       })
+
+      // Regrouper les restants par tranches de cap (4 pour ZEN, 2 pour ELITE)
+      for (let i = 0; i < restants.length; i += cap) {
+        const groupe = restants.slice(i, i + cap)
+        const newCh = {
+          id: `auto_${nextNum}`,
+          numero: nextNum++,
+          formule, sexe, cap,
+          pelerins: groupe,
+          saved: false
+        }
+        chambres.push(newCh)
+      }
     })
   }
 
