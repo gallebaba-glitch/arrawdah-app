@@ -348,6 +348,7 @@ export default function Departs() {
       .pelerin { font-size: 12px; padding: 3px 0; border-bottom: 1px solid #eee; }
       .pelerin:last-child { border-bottom: none; }
       .dispo { font-size: 11px; color: #bbb; padding: 3px 0; font-style: italic; }
+      .hotel-num { font-size: 11px; color: #333; padding: 5px 0 2px 0; margin-top: 4px; border-top: 1px dashed #ccc; font-weight: bold; }
       .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-weight: bold; }
       .badge-h { background: #DBEAFE; color: #1E40AF; }
       .badge-f { background: #FCE7F3; color: #9D174D; }
@@ -374,6 +375,7 @@ export default function Departs() {
           ${Array.from({length: c.cap - c.pelerins.length}).map(() =>
             '<div class="dispo">— Place disponible</div>'
           ).join('')}
+          <div class="hotel-num">N° chambre hôtel : _______________</div>
         </div>
       </div>`).join('')}
     </div>
