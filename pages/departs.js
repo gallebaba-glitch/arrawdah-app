@@ -327,17 +327,60 @@ export default function Departs() {
       if (f > 0) return 'Femmes'
       return 'Hommes'
     }
+    const colorCh = (c) => {
+      const h = c.pelerins.filter(p => p.sexe !== 'femme').length
+      const f = c.pelerins.filter(p => p.sexe === 'femme').length
+      if (h > 0 && f > 0) return '#7B3F00'
+      if (f > 0) return '#862D59'
+      return '#0F5229'
+    }
     const win = window.open('', '_blank')
-    win.document.write(`<html><head><title>Chambres ${sel.nom}</title>
-    <style>body{font-family:Arial;padding:20px}h2{color:#0F5229}.ch{border:1px solid #ddd;margin:10px 0;border-radius:8px;overflow:hidden}
-    .ch-h{background:#0F5229;color:white;padding:8px 12px;font-weight:bold}.ch-b{padding:8px 12px}p{margin:2px 0}</style></head><body>
-    <h2>Répartition des chambres — ${sel.nom}</h2>
-    ${chambres.map(c=>`<div class="ch"><div class="ch-h">Chambre ${c.numero} — ${labelCh(c)} · ${c.formule} (${c.pelerins.length}/${c.cap})</div>
-    <div class="ch-b">${c.pelerins.map(p=>`<p>• ${p.prenom} ${p.nom} (${p.sexe === 'femme' ? 'F' : 'H'})</p>`).join('')}
-    ${Array.from({length:c.cap-c.pelerins.length}).map(()=>'<p style="color:#ccc">— Place disponible</p>').join('')}
-    </div></div>`).join('')}
+    win.document.write(`<!DOCTYPE html><html><head><title>Chambres ${sel.nom}</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; padding: 20px; background: white; }
+      h1 { color: #0F5229; font-size: 18px; margin-bottom: 4px; }
+      .subtitle { color: #666; font-size: 12px; margin-bottom: 16px; }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .ch { border-radius: 8px; overflow: hidden; border: 1px solid #ddd; break-inside: avoid; }
+      .ch-h { padding: 8px 12px; font-weight: bold; font-size: 12px; color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .ch-b { padding: 8px 12px; background: #f9f9f9; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .pelerin { font-size: 12px; padding: 3px 0; border-bottom: 1px solid #eee; }
+      .pelerin:last-child { border-bottom: none; }
+      .dispo { font-size: 11px; color: #bbb; padding: 3px 0; font-style: italic; }
+      .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-weight: bold; }
+      .badge-h { background: #DBEAFE; color: #1E40AF; }
+      .badge-f { background: #FCE7F3; color: #9D174D; }
+      @media print {
+        body { padding: 10px; }
+        .grid { gap: 8px; }
+        .ch { break-inside: avoid; }
+      }
+    </style></head><body>
+    <h1>Répartition des chambres — ${sel.nom}</h1>
+    <p class="subtitle">${sel.date_greg || ''} ${sel.date_heg ? '(' + sel.date_heg + ')' : ''} · ${selPelerins.length} pèlerins · ${chambres.length} chambres · Guide : ${sel.guide || '—'}</p>
+    <div class="grid">
+    ${chambres.map(c => `
+      <div class="ch">
+        <div class="ch-h" style="background-color:${colorCh(c)};">
+          Chambre ${c.numero} — ${labelCh(c)} · ${c.formule} (${c.pelerins.length}/${c.cap})
+        </div>
+        <div class="ch-b">
+          ${c.pelerins.map(p => `
+            <div class="pelerin">
+              ${p.prenom} ${p.nom}
+              <span class="badge ${p.sexe === 'femme' ? 'badge-f' : 'badge-h'}">${p.sexe === 'femme' ? 'F' : 'H'}</span>
+            </div>`).join('')}
+          ${Array.from({length: c.cap - c.pelerins.length}).map(() =>
+            '<div class="dispo">— Place disponible</div>'
+          ).join('')}
+        </div>
+      </div>`).join('')}
+    </div>
     </body></html>`)
-    win.document.close(); win.print()
+    win.document.close()
+    win.focus()
+    setTimeout(() => win.print(), 500)
   }
 
   // ── RENDER ────────────────────────────────────
