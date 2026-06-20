@@ -324,13 +324,13 @@ export default function Departs() {
     win.document.write(`<!DOCTYPE html><html><head><title>Embarquement ${sel.nom}</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: Arial, sans-serif; padding: 16px; font-size: 11px; }
-      h1 { color: #0F5229; font-size: 15px; margin-bottom: 2px; }
-      .meta { color: #555; font-size: 11px; margin-bottom: 10px; }
+      body { font-family: Arial, sans-serif; padding: 16px; font-size: 13px; }
+      h1 { color: #0F5229; font-size: 17px; margin-bottom: 4px; text-align: center; }
+      .meta { color: #555; font-size: 12px; margin-bottom: 12px; text-align: center; }
       .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       table { width: 100%; border-collapse: collapse; }
-      th { background: #0F5229; color: white; padding: 5px 6px; text-align: left; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      td { border: 1px solid #ddd; padding: 4px 6px; font-size: 11px; }
+      th { background: #0F5229; color: white; padding: 6px 8px; text-align: left; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      td { border: 1px solid #ddd; padding: 5px 8px; font-size: 13px; }
       tr:nth-child(even) td { background: #F5FAF7; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       @media print { body { padding: 10px; } }
     </style></head><body>
