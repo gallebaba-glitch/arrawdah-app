@@ -99,7 +99,8 @@ function buildChambres(pelerins) {
         const newCh = {
           id: `auto_${nextNum}`,
           numero: nextNum++,
-          formule, sexe, cap,
+          formule, sexe,
+          cap: groupe.length, // capacité = nombre réel de pèlerins dans ce groupe
           pelerins: groupe,
           saved: false
         }
@@ -373,54 +374,72 @@ export default function Departs() {
       return '#0F5229'
     }
     const win = window.open('', '_blank')
-    win.document.write(`<!DOCTYPE html><html><head><title>Chambres ${sel.nom}</title>
+    win.document.write(`<!DOCTYPE html><html><head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chambres ${sel.nom}</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: Arial, sans-serif; padding: 20px; background: white; }
-      h1 { color: #0F5229; font-size: 18px; margin-bottom: 4px; text-align: center; }
-      .subtitle { color: #666; font-size: 12px; margin-bottom: 16px; text-align: center; }
-      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      body { font-family: Arial, sans-serif; padding: 16px; background: white; }
+      .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 10px; }
+      h1 { color: #0F5229; font-size: 16px; text-align: center; flex: 1; }
+      .subtitle { color: #666; font-size: 12px; margin-bottom: 14px; text-align: center; }
+      .btn-print { background: #0F5229; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+      .btn-print:active { background: #1A7A3C; }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
       .ch { border-radius: 8px; overflow: hidden; border: 1px solid #ddd; break-inside: avoid; }
-      .ch-h { padding: 8px 12px; font-weight: bold; font-size: 12px; color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .ch-b { padding: 8px 12px; background: #f9f9f9; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .ch-h { padding: 7px 10px; font-weight: bold; font-size: 12px; color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .ch-b { padding: 8px 10px; background: #f9f9f9; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .pelerin { font-size: 12px; padding: 3px 0; border-bottom: 1px solid #eee; }
       .pelerin:last-child { border-bottom: none; }
       .dispo { font-size: 11px; color: #bbb; padding: 3px 0; font-style: italic; }
-      .hotel-num { font-size: 11px; color: #333; padding: 5px 0 2px 0; margin-top: 4px; border-top: 1px dashed #ccc; font-weight: bold; }
-      .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-weight: bold; }
-      .badge-h { background: #DBEAFE; color: #1E40AF; }
-      .badge-f { background: #FCE7F3; color: #9D174D; }
+      .badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 10px; margin-left: 4px; font-weight: bold; }
+      .badge-h { background: #DBEAFE; color: #1E40AF; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .badge-f { background: #FCE7F3; color: #9D174D; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .hotel-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #bbb; }
+      .hotel-label { font-size: 11px; font-weight: bold; color: #444; white-space: nowrap; }
+      .hotel-input { flex: 1; border: 1px solid #ccc; border-radius: 5px; padding: 4px 7px; font-size: 14px; font-family: Arial; color: #0F5229; font-weight: bold; outline: none; min-width: 0; background: white; }
+      .hotel-input:focus { border-color: #0F5229; box-shadow: 0 0 0 2px #E8F5EE; }
       @media print {
-        body { padding: 10px; }
-        .grid { gap: 8px; }
+        .btn-print { display: none !important; }
+        .hotel-input { border: none; border-bottom: 1px solid #999; border-radius: 0; background: transparent; font-size: 12px; }
+        body { padding: 8px; }
+        .grid { gap: 7px; }
         .ch { break-inside: avoid; }
+        @page { margin: 8mm; }
+      }
+      @media (max-width: 600px) {
+        .grid { grid-template-columns: repeat(2, 1fr); }
+        h1 { font-size: 13px; }
+        .btn-print { padding: 8px 12px; font-size: 13px; }
       }
     </style></head><body>
-    <h1>Répartition des chambres — ${sel.nom}</h1>
-    <p class="subtitle">${sel.date_greg || ''} ${sel.date_heg ? '(' + sel.date_heg + ')' : ''} · ${selPelerins.length} pèlerins · ${chambres.length} chambres · Guide : ${sel.guide || '—'}</p>
+    <div class="top-bar">
+      <h1>Répartition des chambres — ${sel.nom}</h1>
+      <button class="btn-print" onclick="window.print()">🖨️ Imprimer / PDF</button>
+    </div>
+    <p class="subtitle">${sel.date_greg || ''} ${sel.date_heg ? '(' + sel.date_heg + ')' : ''} &nbsp;·&nbsp; ${selPelerins.length} pèlerins &nbsp;·&nbsp; ${chambres.length} chambres &nbsp;·&nbsp; Guide : ${sel.guide || '—'}</p>
     <div class="grid">
-    ${chambres.map(c => `
+    ${chambres.map(c => \`
       <div class="ch">
-        <div class="ch-h" style="background-color:${colorCh(c)};">
-          Chambre ${c.numero} — ${labelCh(c)} · ${c.formule} (${c.pelerins.length}/${c.cap})
+        <div class="ch-h" style="background-color:\${colorCh(c)};">
+          Chambre \${c.numero} — \${labelCh(c)} · \${c.formule} (\${c.pelerins.length}/\${c.cap})
         </div>
         <div class="ch-b">
-          ${c.pelerins.map(p => `
+          \${c.pelerins.map(p => \`
             <div class="pelerin">
-              ${p.prenom} ${p.nom}
-              <span class="badge ${p.sexe === 'femme' ? 'badge-f' : 'badge-h'}">${p.sexe === 'femme' ? 'F' : 'H'}</span>
-            </div>`).join('')}
-          ${Array.from({length: c.cap - c.pelerins.length}).map(() =>
-            '<div class="dispo">— Place disponible</div>'
-          ).join('')}
-          <div class="hotel-num">N° chambre hôtel : _______________</div>
+              \${p.prenom} \${p.nom}
+              <span class="badge \${p.sexe === 'femme' ? 'badge-f' : 'badge-h'}">\${p.sexe === 'femme' ? 'F' : 'H'}</span>
+            </div>\`).join('')}
+
+          <div class="hotel-row">
+            <span class="hotel-label">N° hôtel :</span>
+            <input class="hotel-input" type="text" inputmode="numeric" placeholder="ex: 412" />
+          </div>
         </div>
-      </div>`).join('')}
+      </div>\`).join('')}
     </div>
     </body></html>`)
     win.document.close()
-    win.focus()
-    setTimeout(() => win.print(), 500)
   }
 
   // ── RENDER ────────────────────────────────────
@@ -651,9 +670,7 @@ export default function Departs() {
                                   style={{ background: '#FEF2F2', color: '#DC2626' }} title="Retirer">✕</button>
                               </div>
                             ))}
-                            {Array.from({ length: ch.cap - ch.pelerins.length }).map((_, i) => (
-                              <div key={i} className="px-3 py-2 text-xs text-gray-300 italic">— Place disponible</div>
-                            ))}
+
                           </div>
                         </div>
                       ))}
