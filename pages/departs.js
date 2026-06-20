@@ -377,8 +377,8 @@ export default function Departs() {
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: Arial, sans-serif; padding: 20px; background: white; }
-      h1 { color: #0F5229; font-size: 18px; margin-bottom: 4px; }
-      .subtitle { color: #666; font-size: 12px; margin-bottom: 16px; }
+      h1 { color: #0F5229; font-size: 18px; margin-bottom: 4px; text-align: center; }
+      .subtitle { color: #666; font-size: 12px; margin-bottom: 16px; text-align: center; }
       .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
       .ch { border-radius: 8px; overflow: hidden; border: 1px solid #ddd; break-inside: avoid; }
       .ch-h { padding: 8px 12px; font-weight: bold; font-size: 12px; color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
