@@ -434,7 +434,7 @@ export default function Departs() {
             ph +
             '<div class="hotel-row">' +
               '<span class="hotel-label">N° hôtel :</span>' +
-              '<input class="hotel-input" type="text" inputmode="numeric" placeholder="ex: 412" />' +
+              '<input class="hotel-input" type="text" inputmode="numeric" placeholder="" />' +
             '</div>' +
           '</div>' +
         '</div>'
