@@ -306,17 +306,55 @@ export default function Departs() {
 
   // ── EXPORT ────────────────────────────────────
   function printEmbarquement() {
+    // Trier par ordre alphabétique du nom de famille
+    const sorted = [...selPelerins].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+    const mid = Math.ceil(sorted.length / 2)
+    const col1 = sorted.slice(0, mid)
+    const col2 = sorted.slice(mid)
+
+    const makeRows = (list, startIdx) => list.map((p, i) => `
+      <tr>
+        <td style="text-align:center;width:30px">${startIdx + i + 1}</td>
+        <td><strong>${p.nom}</strong> ${p.prenom}</td>
+        <td style="text-align:center;width:30px">${p.sexe === 'femme' ? 'F' : 'H'}</td>
+        <td style="text-align:center;width:40px">☐</td>
+      </tr>`).join('')
+
     const win = window.open('', '_blank')
-    win.document.write(`<html><head><title>Embarquement ${sel.nom}</title>
-    <style>body{font-family:Arial;padding:20px}h2{color:#0F5229}table{width:100%;border-collapse:collapse}
-    td,th{border:1px solid #ddd;padding:8px;text-align:left}th{background:#0F5229;color:white}</style></head><body>
-    <h2>Liste d'embarquement — ${sel.nom}</h2>
-    <p>${sel.date_greg||''} ${sel.date_heg?'('+sel.date_heg+')':''} · ${sel.vol||''}</p>
-    <p>Guide : ${sel.guide||'—'} · Total : ${selPelerins.length} pèlerins</p>
-    <table><tr><th>#</th><th>Nom complet</th><th>Formule</th><th>Sexe</th><th>Passeport</th></tr>
-    ${selPelerins.map((p,i)=>`<tr><td>${i+1}</td><td>${p.prenom} ${p.nom}</td><td>${p.formule}</td><td>${p.sexe==='femme'?'F':'H'}</td><td>${p.num_passeport||'—'}</td></tr>`).join('')}
-    </table></body></html>`)
-    win.document.close(); win.print()
+    win.document.write(`<!DOCTYPE html><html><head><title>Embarquement ${sel.nom}</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; padding: 16px; font-size: 11px; }
+      h1 { color: #0F5229; font-size: 15px; margin-bottom: 2px; }
+      .meta { color: #555; font-size: 11px; margin-bottom: 10px; }
+      .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #0F5229; color: white; padding: 5px 6px; text-align: left; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      td { border: 1px solid #ddd; padding: 4px 6px; font-size: 11px; }
+      tr:nth-child(even) td { background: #F5FAF7; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      @media print { body { padding: 10px; } }
+    </style></head><body>
+    <h1>Liste d'embarquement — ${sel.nom} · Aéroport Blaise Diagne</h1>
+    <p class="meta">
+      ${sel.date_greg || ''} ${sel.date_heg ? '(' + sel.date_heg + ')' : ''} &nbsp;·&nbsp;
+      Vol : ${sel.vol || '—'} &nbsp;·&nbsp;
+      Guide : ${sel.guide || '—'} &nbsp;·&nbsp;
+      Total : ${selPelerins.length} pèlerins
+    </p>
+    <div class="columns">
+      <table>
+        <tr><th>#</th><th>Nom · Prénom</th><th>Sx</th><th>✓</th></tr>
+        ${makeRows(col1, 0)}
+      </table>
+      <table>
+        <tr><th>#</th><th>Nom · Prénom</th><th>Sx</th><th>✓</th></tr>
+        ${makeRows(col2, mid)}
+      </table>
+    </div>
+    </body></html>`)
+    win.document.close()
+    win.focus()
+    setTimeout(() => win.print(), 500)
   }
 
   function printChambres() {
