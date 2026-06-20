@@ -419,24 +419,27 @@ export default function Departs() {
     </div>
     <p class="subtitle">${sel.date_greg || ''} ${sel.date_heg ? '(' + sel.date_heg + ')' : ''} &nbsp;·&nbsp; ${selPelerins.length} pèlerins &nbsp;·&nbsp; ${chambres.length} chambres &nbsp;·&nbsp; Guide : ${sel.guide || '—'}</p>
     <div class="grid">
-    ${chambres.map(c => \`
-      <div class="ch">
-        <div class="ch-h" style="background-color:\${colorCh(c)};">
-          Chambre \${c.numero} — \${labelCh(c)} · \${c.formule} (\${c.pelerins.length}/\${c.cap})
-        </div>
-        <div class="ch-b">
-          \${c.pelerins.map(p => \`
-            <div class="pelerin">
-              \${p.prenom} \${p.nom}
-              <span class="badge \${p.sexe === 'femme' ? 'badge-f' : 'badge-h'}">\${p.sexe === 'femme' ? 'F' : 'H'}</span>
-            </div>\`).join('')}
-
-          <div class="hotel-row">
-            <span class="hotel-label">N° hôtel :</span>
-            <input class="hotel-input" type="text" inputmode="numeric" placeholder="ex: 412" />
-          </div>
-        </div>
-      </div>\`).join('')}
+    ${chambres.map(c => {
+      const ph = c.pelerins.map(p =>
+        '<div class="pelerin">' + p.prenom + ' ' + p.nom +
+        ' <span class="badge ' + (p.sexe === 'femme' ? 'badge-f' : 'badge-h') + '">' +
+        (p.sexe === 'femme' ? 'F' : 'H') + '</span></div>'
+      ).join('')
+      return (
+        '<div class="ch">' +
+          '<div class="ch-h" style="background-color:' + colorCh(c) + ';">' +
+            'Chambre ' + c.numero + ' — ' + labelCh(c) + ' · ' + c.formule + ' (' + c.pelerins.length + '/' + c.cap + ')' +
+          '</div>' +
+          '<div class="ch-b">' +
+            ph +
+            '<div class="hotel-row">' +
+              '<span class="hotel-label">N° hôtel :</span>' +
+              '<input class="hotel-input" type="text" inputmode="numeric" placeholder="ex: 412" />' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      )
+    }).join('')}
     </div>
     </body></html>`)
     win.document.close()
