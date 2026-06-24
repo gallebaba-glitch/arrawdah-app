@@ -318,6 +318,7 @@ export default function Departs() {
         <td style="text-align:center;width:30px">${startIdx + i + 1}</td>
         <td><strong>${p.nom}</strong> ${p.prenom}</td>
         <td style="text-align:center;width:30px">${p.sexe === 'femme' ? 'F' : 'H'}</td>
+        <td style="width:120px">${p.telephone || ''}</td>
         <td style="text-align:center;width:40px">☐</td>
       </tr>`).join('')
 
@@ -344,11 +345,11 @@ export default function Departs() {
     </p>
     <div class="columns">
       <table>
-        <tr><th>#</th><th>Nom · Prénom</th><th>Sx</th><th>✓</th></tr>
+        <tr><th>#</th><th>Nom · Prénom</th><th>Sx</th><th>Téléphone</th><th>✓</th></tr>
         ${makeRows(col1, 0)}
       </table>
       <table>
-        <tr><th>#</th><th>Nom · Prénom</th><th>Sx</th><th>✓</th></tr>
+        <tr><th>#</th><th>Nom · Prénom</th><th>Sx</th><th>Téléphone</th><th>✓</th></tr>
         ${makeRows(col2, mid)}
       </table>
     </div>
