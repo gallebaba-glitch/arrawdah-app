@@ -10,7 +10,7 @@ export default function Login() {
   // Si déjà connecté, rediriger
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) window.location.href = '/'
+      if (session) window.location.replace('/')
     })
   }, [])
 
@@ -23,7 +23,7 @@ export default function Login() {
       setError('Email ou mot de passe incorrect.')
       setLoading(false)
     } else if (data?.session) {
-      window.location.href = '/'
+      window.location.replace('/')
     } else {
       setError('Connexion échouée. Réessayez.')
       setLoading(false)
