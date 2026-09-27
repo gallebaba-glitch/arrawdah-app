@@ -14,14 +14,29 @@ const STATUT = {
 const EMPTY = {
   nom: '', date_greg: '', date_heg: '', duree: 14,
   max_pelerins: 40, vol: '', hotel_mecque: '', hotel_medine: '',
-  guide: '', statut: 'preparation',
+  statut: 'preparation',
 }
 
 // ─── HIJRI ────────────────────────────────────────
-function gregToJD(d,m,y){return Math.floor((1461*(y+4800+Math.floor((m-14)/12)))/4)+Math.floor((367*(m-2-12*Math.floor((m-14)/12)))/12)-Math.floor((3*Math.floor((y+4900+Math.floor((m-14)/12))/100))/4)+d-32075}
-function jdToHeg(jd){const l=jd-1948440+10632;const n=Math.floor((l-1)/10631);const ll=l-10631*n+354;const j=Math.floor((10985-ll)/5316)*Math.floor((50*ll)/17719)+Math.floor(ll/5670)*Math.floor((43*ll)/15238);const lll=ll-Math.floor((30-j)/15)*Math.floor((17719*j)/50)-Math.floor(j/16)*Math.floor((15238*j)/43)+29;const month=Math.floor((24*lll)/709);const day=lll-Math.floor((709*month)/24);const year=30*n+j-29;return{day,month,year}}
-const MOIS=['Mouharram','Safar','Rabi Al Awwal','Rabi Ath Thania','Joumada Al Oula','Joumada Ath Thania','Rajab','Chaabane','Ramadan','Chawwal','Dhou Al Qida','Dhou Al Hijja']
-function toHijri(s){if(!s)return '';const[y,m,d]=s.split('-').map(Number);const h=jdToHeg(gregToJD(d,m,y));return`${h.day} ${MOIS[h.month-1]} ${h.year}H`}
+function toHijri(s) {
+  if (!s) return ''
+  let [y, m, d] = s.split('-').map(Number)
+  if (m <= 2) { y -= 1; m += 12 }
+  const A = Math.floor(y / 100)
+  const B = 2 - A + Math.floor(A / 4)
+  const JD = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + B - 1524 // .5 omitted, integer
+  const Z = JD
+  let N = Z - 1948438 + 10632
+  const II = Math.floor((N - 1) / 10631)
+  N = N - 10631 * II + 354
+  const J = Math.floor((10985 - N) / 5316) * Math.floor((50 * N) / 17719) + Math.floor(N / 5670) * Math.floor((43 * N) / 15238)
+  N = N - Math.floor((30 - J) / 15) * Math.floor((17719 * J) / 50) - Math.floor(J / 16) * Math.floor((15238 * J) / 43) + 29
+  const M = Math.floor((24 * N) / 709)
+  const D = N - Math.floor((709 * M) / 24)
+  const Y = 30 * II + J - 29 - 1
+  const MOIS = ['Mouharram','Safar','Rabi Al Awwal','Rabi Ath Thania','Joumada Al Oula','Joumada Ath Thania','Rajab','Chaabane','Ramadan','Chawwal','Dhou Al Qida','Dhou Al Hijja']
+  return `${D} ${MOIS[M-1]} ${Y}H`
+}
 
 // ─── STATUT GLOBAL ────────────────────────────────
 function statutGlobal(pelerins){
@@ -418,7 +433,7 @@ export default function Departs() {
       <h1>Répartition des chambres — ${sel.nom}</h1>
       <button class="btn-print" onclick="window.print()">🖨️ Imprimer / PDF</button>
     </div>
-    <p class="subtitle">${sel.date_greg || ''} ${sel.date_heg ? '(' + sel.date_heg + ')' : ''} &nbsp;·&nbsp; ${selPelerins.length} pèlerins &nbsp;·&nbsp; ${chambres.length} chambres &nbsp;·&nbsp; Guide : ${sel.guide || '—'}</p>
+    <p class="subtitle">${sel.date_greg || ''} ${sel.date_heg ? '(' + sel.date_heg + ')' : ''} &nbsp;·&nbsp; ${selPelerins.length} pèlerins &nbsp;·&nbsp; ${chambres.length} chambres</p>
     <div class="grid">
     ${chambres.map(c => {
       const ph = c.pelerins.map(p =>
@@ -485,7 +500,7 @@ export default function Departs() {
                             {d.date_greg && <span>{d.date_greg}</span>}
                             {d.date_heg && <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#E8F5EE', color: '#0F5229' }}>{d.date_heg}</span>}
                           </div>
-                          <div className="text-xs text-gray-400 mt-1">{d.guide || 'Guide non assigné'} · {d.duree}j</div>
+                          <div className="text-xs text-gray-400 mt-1">{d.duree}j</div>
                         </div>
                         <div className="flex items-center gap-2 ml-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                           <span className="text-lg" title={sg2.label}>{sg2.emoji}</span>
@@ -790,11 +805,7 @@ export default function Departs() {
             <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-green-600"
               value={form.vol} onChange={e => setF('vol', e.target.value)} placeholder="Ethiopian ET 706" />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Guide</label>
-            <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-green-600"
-              value={form.guide} onChange={e => setF('guide', e.target.value)} placeholder="Oustaz Babacar" />
-          </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hôtel La Mecque</label>
             <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-green-600"
