@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
@@ -6,6 +7,14 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const router = useRouter()
+
+  // Si déjà connecté, rediriger vers l'accueil
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.push('/')
+    })
+  }, [router])
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -14,8 +23,10 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError('Email ou mot de passe incorrect.')
+      setLoading(false)
+    } else {
+      router.push('/')
     }
-    setLoading(false)
   }
 
   return (
