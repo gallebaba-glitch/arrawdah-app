@@ -181,6 +181,8 @@ export default function Pelerins() {
               <option value="tous">Toutes formules</option>
               <option value="ZEN">🌿 ZEN</option>
               <option value="ELITE">⭐ ELITE</option>
+              <option value="RAHMA">🤲 Rahma</option>
+              <option value="PERSONNALISE">✨ Personnalisée</option>
             </select>
           </div>
 
@@ -454,6 +456,8 @@ export default function Pelerins() {
             <select className="input" value={form.formule} onChange={e => { set('formule', e.target.value); set('prix_total', 0) }}>
               <option value="ZEN">🌿 Formule ZEN</option>
               <option value="ELITE">⭐ Formule ELITE</option>
+              <option value="RAHMA">🤲 Formule Rahma</option>
+              <option value="PERSONNALISE">✨ Formule Personnalisée</option>
             </select>
           </div>
           <div>
