@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../components/useAuth'
 
 const STATUT_CONFIG = {
   inscrit:  { label: 'Inscrit',  class: 'badge-warn', color: '#ED8936' },
@@ -20,6 +21,12 @@ const EMPTY = {
   doc_visa: false, doc_billet: false, notes: '',
 }
 
+const EMPTY_PAIEMENT = {
+  montant: '',
+  date_paiement: new Date().toISOString().split('T')[0],
+  note: '',
+}
+
 function getInitials(p) {
   return ((p.prenom?.[0] || '') + (p.nom?.[0] || '')).toUpperCase()
 }
@@ -34,6 +41,7 @@ function getDossierStatus(p) {
 
 export default function Pelerins() {
   const router = useRouter()
+  const { user } = useAuth()
   const [pelerins, setPelerins] = useState([])
   const [departs, setDeparts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -43,6 +51,10 @@ export default function Pelerins() {
   const [search, setSearch] = useState('')
   const [filterStatut, setFilterStatut] = useState('tous')
   const [filterFormule, setFilterFormule] = useState('tous')
+  const [paiements, setPaiements] = useState([])
+  const [paiementModal, setPaiementModal] = useState(false)
+  const [paiementForm, setPaiementForm] = useState(EMPTY_PAIEMENT)
+  const [savingPaiement, setSavingPaiement] = useState(false)
 
   useEffect(() => { fetchAll() }, [])
 
@@ -55,6 +67,15 @@ export default function Pelerins() {
     setPelerins(p || [])
     setDeparts(d || [])
     setLoading(false)
+  }
+
+  async function fetchPaiements(pelerinId) {
+    const { data } = await supabase
+      .from('paiements')
+      .select('*')
+      .eq('pelerin_id', pelerinId)
+      .order('date_paiement', { ascending: true })
+    setPaiements(data || [])
   }
 
   function openNew() { setForm(EMPTY); setModalOpen(true) }
@@ -80,6 +101,53 @@ export default function Pelerins() {
     fetchAll()
   }
 
+  async function ajouterPaiement() {
+    if (!paiementForm.montant || !paiementForm.date_paiement) {
+      alert('Montant et date obligatoires')
+      return
+    }
+    setSavingPaiement(true)
+    const montant = parseInt(paiementForm.montant) || 0
+
+    // Enregistrer dans la table paiements
+    await supabase.from('paiements').insert([{
+      pelerin_id: selected,
+      montant,
+      date_paiement: paiementForm.date_paiement,
+      note: paiementForm.note || '',
+    }])
+
+    // Mettre à jour montant_paye dans pelerins
+    const sel = pelerins.find(x => x.id === selected)
+    const nouveauTotal = (sel?.montant_paye || 0) + montant
+    await supabase.from('pelerins').update({ montant_paye: nouveauTotal }).eq('id', selected)
+
+    // Rafraîchir
+    await fetchAll()
+    await fetchPaiements(selected)
+    setPaiementModal(false)
+    setPaiementForm(EMPTY_PAIEMENT)
+    setSavingPaiement(false)
+  }
+
+  async function supprimerPaiement(paiementId, montant) {
+    if (!confirm('Supprimer ce paiement ?')) return
+    await supabase.from('paiements').delete().eq('id', paiementId)
+    // Recalculer montant_paye
+    const sel = pelerins.find(x => x.id === selected)
+    const nouveauTotal = Math.max(0, (sel?.montant_paye || 0) - montant)
+    await supabase.from('pelerins').update({ montant_paye: nouveauTotal }).eq('id', selected)
+    await fetchAll()
+    await fetchPaiements(selected)
+  }
+
+  function selectPelerin(id) {
+    const newId = id === selected ? null : id
+    setSelected(newId)
+    if (newId) fetchPaiements(newId)
+    else setPaiements([])
+  }
+
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
   const filtered = pelerins.filter(p => {
@@ -90,9 +158,12 @@ export default function Pelerins() {
   })
 
   const getDep = id => departs.find(d => d.id == id)?.nom || '—'
-
   const sel = selected ? pelerins.find(x => x.id === selected) : null
-  const pct = sel ? Math.round(((sel.montant_paye || 0) / (sel.prix_total || 1)) * 100) : 0
+  const totalPaye = paiements.length > 0
+    ? paiements.reduce((s, p) => s + (p.montant || 0), 0)
+    : (sel?.montant_paye || 0)
+  const pct = sel ? Math.round((totalPaye / (sel.prix_total || 1)) * 100) : 0
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—'
 
   return (
     <Layout title={`Pèlerins (${pelerins.length})`} action={{ label: '+ Nouveau pèlerin', fn: openNew }}>
@@ -100,8 +171,6 @@ export default function Pelerins() {
 
         {/* LISTE */}
         <div className={sel ? 'w-1/2' : 'w-full'}>
-
-          {/* Filtres */}
           <div className="flex gap-3 mb-4">
             <input className="input flex-1" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
             <select className="input w-36" value={filterStatut} onChange={e => setFilterStatut(e.target.value)}>
@@ -131,31 +200,26 @@ export default function Pelerins() {
                 const isActive = selected === p.id
                 return (
                   <div key={p.id}
-                    onClick={() => setSelected(isActive ? null : p.id)}
+                    onClick={() => selectPelerin(p.id)}
                     className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-all border-b border-gray-50 last:border-0
                       ${isActive ? 'bg-green-50 border-l-4 border-l-green-700' : 'hover:bg-gray-50'}`}>
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-yellow-700"
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                          style={{ background: '#0F5229', color: '#C9A84C' }}>
                       {getInitials(p)}
                     </div>
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-800 truncate">{p.prenom} {p.nom}</div>
                       <div className="text-xs text-gray-400 mt-0.5">{getDep(p.depart_id)} · {p.formule} · {p.sexe === 'femme' ? '👩' : '👨'}</div>
                     </div>
-                    {/* Statut paiement */}
                     <div className="text-right flex-shrink-0">
                       <div className="text-xs font-semibold mb-1" style={{ color: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}>{paiePct}%</div>
                       <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: paiePct + '%', background: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}/>
                       </div>
                     </div>
-                    {/* Dossier */}
                     <span className={`badge ${ds === 'complet' ? 'badge-ok' : ds === 'incomplet' ? 'badge-err' : 'badge-warn'}`}>
                       {ds === 'complet' ? '✓' : ds === 'incomplet' ? '✗' : '⚠'}
                     </span>
-                    {/* Statut */}
                     <span className={`badge ${STATUT_CONFIG[p.statut]?.class || 'badge-gray'}`}>
                       {STATUT_CONFIG[p.statut]?.label || p.statut}
                     </span>
@@ -199,22 +263,63 @@ export default function Pelerins() {
                   ))}
                 </div>
 
-                {/* Paiement */}
+                {/* Paiements */}
                 <div>
-                  <div className="font-semibold text-gray-700 mb-2 text-sm">💰 Paiement</div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="font-semibold text-gray-700 text-sm">💰 Paiements</div>
+                    <button
+                      onClick={() => { setPaiementForm(EMPTY_PAIEMENT); setPaiementModal(true) }}
+                      className="text-xs px-3 py-1.5 rounded-lg text-white font-semibold"
+                      style={{ background: '#0F5229' }}>
+                      + Ajouter un paiement
+                    </button>
+                  </div>
+
+                  {/* Résumé */}
                   <div className="text-2xl font-bold mb-1" style={{ color: '#1A7A3C' }}>
-                    {(sel.montant_paye||0).toLocaleString('fr-FR')} FCFA
+                    {totalPaye.toLocaleString('fr-FR')} FCFA
                     <span className="text-sm font-normal text-gray-400 ml-1">/ {(sel.prix_total||0).toLocaleString('fr-FR')}</span>
                   </div>
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-1">
                     <div className="h-full rounded-full" style={{ width: pct + '%', background: '#1A7A3C' }}/>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-400">
+                  <div className="flex justify-between text-xs text-gray-400 mb-3">
                     <span>{pct}% payé</span>
                     <span className={pct < 100 ? 'text-red-500 font-semibold' : 'text-green-600 font-semibold'}>
-                      {pct < 100 ? 'Reste : ' + ((sel.prix_total||0)-(sel.montant_paye||0)).toLocaleString('fr-FR') + ' FCFA' : '✓ Soldé'}
+                      {pct < 100
+                        ? 'Reste : ' + ((sel.prix_total||0) - totalPaye).toLocaleString('fr-FR') + ' FCFA'
+                        : '✓ Soldé'}
                     </span>
                   </div>
+
+                  {/* Historique paiements */}
+                  {paiements.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#E5EDE8' }}>
+                      <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wide"
+                        style={{ background: '#F5FAF7' }}>
+                        Historique des paiements
+                      </div>
+                      {paiements.map((p, i) => (
+                        <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 border-t text-sm"
+                          style={{ borderColor: '#F0F0F0' }}>
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                            style={{ background: '#E8F5EE', color: '#0F5229' }}>{i+1}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold" style={{ color: '#1A7A3C' }}>
+                              {p.montant.toLocaleString('fr-FR')} FCFA
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {fmtDate(p.date_paiement)}{p.note ? ` — ${p.note}` : ''}
+                            </div>
+                          </div>
+                          {user?.role === 'admin' && (
+                            <button onClick={() => supprimerPaiement(p.id, p.montant)}
+                              className="text-red-400 hover:text-red-600 text-xs px-1.5">✕</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Documents */}
@@ -254,8 +359,10 @@ export default function Pelerins() {
                     style={{background:'#FEF9E7',borderColor:'#F9E79F',color:'#B7950B',textDecoration:'none'}}>
                     🧾 Facture
                   </a>
-                  <button onClick={() => supprimer(sel.id)}
-                    className="btn btn-danger text-sm">🗑️ Supprimer</button>
+                  {user?.role === 'admin' && (
+                    <button onClick={() => supprimer(sel.id)}
+                      className="btn btn-danger text-sm">🗑️ Supprimer</button>
+                  )}
                 </div>
               </div>
             </div>
@@ -263,7 +370,67 @@ export default function Pelerins() {
         )}
       </div>
 
-      {/* MODAL */}
+      {/* MODAL PAIEMENT */}
+      {paiementModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="p-4 border-b" style={{ borderColor: '#E5EDE8' }}>
+              <div className="font-bold text-gray-800">💰 Ajouter un paiement</div>
+              <div className="text-sm text-gray-500 mt-0.5">
+                {sel?.prenom} {sel?.nom}
+              </div>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="label">Montant (FCFA) *</label>
+                <input
+                  className="input"
+                  type="number"
+                  placeholder="ex: 500000"
+                  value={paiementForm.montant}
+                  onChange={e => setPaiementForm(f => ({ ...f, montant: e.target.value }))}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="label">Date du paiement *</label>
+                <input
+                  className="input"
+                  type="date"
+                  value={paiementForm.date_paiement}
+                  onChange={e => setPaiementForm(f => ({ ...f, date_paiement: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label">Note (optionnel)</label>
+                <input
+                  className="input"
+                  placeholder="ex: Acompte, virement, solde..."
+                  value={paiementForm.note}
+                  onChange={e => setPaiementForm(f => ({ ...f, note: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t flex gap-3" style={{ borderColor: '#E5EDE8' }}>
+              <button
+                onClick={() => setPaiementModal(false)}
+                className="flex-1 py-2 rounded-lg border text-sm font-semibold text-gray-500"
+                style={{ borderColor: '#E5EDE8' }}>
+                Annuler
+              </button>
+              <button
+                onClick={ajouterPaiement}
+                disabled={savingPaiement}
+                className="flex-1 py-2 rounded-lg text-white text-sm font-semibold"
+                style={{ background: savingPaiement ? '#6B9E7A' : '#0F5229' }}>
+                {savingPaiement ? 'Enregistrement...' : '✓ Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PÈLERIN */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}
         title={form.id ? 'Modifier le pèlerin' : 'Nouveau pèlerin'} onSave={save}>
         <div className="grid grid-cols-2 gap-4">
