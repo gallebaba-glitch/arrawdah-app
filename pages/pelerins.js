@@ -99,7 +99,7 @@ export default function Pelerins() {
       error = res.error
     }
     if (error) {
-      alert('Erreur lors de l'enregistrement : ' + error.message)
+      alert("Erreur : " + error.message)
       return
     }
     setModalOpen(false)
