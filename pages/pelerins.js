@@ -15,7 +15,7 @@ const STATUT_CONFIG = {
 const EMPTY = {
   prenom: '', nom: '', telephone: '', tel_famille: '',
   date_naissance: '', sexe: 'homme', premiere_oumrah: true, formule: 'ZEN', prix_total: 0,
-  montant_paye: 0, depart_id: '', num_passeport: '',
+  montant_paye: 0, depart_id: '', num_passeport: '', statut_passeport: 'non_recu',
   exp_passeport: '', medical: '', statut: 'inscrit',
   doc_passeport: false, doc_photo: false, doc_vaccin: false, doc_vaccin_fy: false,
   doc_visa: false, doc_billet: false, notes: '',
@@ -253,7 +253,8 @@ export default function Pelerins() {
                   {[
                     { l: 'Téléphone', v: sel.telephone || '—' },
                     { l: 'Famille', v: sel.tel_famille || '—' },
-                    { l: 'Passeport', v: sel.num_passeport || '—' },
+                    { l: 'N° Passeport', v: sel.num_passeport || '—' },
+                    { l: 'Statut', v: sel.statut_passeport === 'recu' ? '✅ Reçu' : sel.statut_passeport === 'en_cours' ? '⏳ En cours' : '❌ À recevoir' },
                     { l: 'Exp. passeport', v: sel.exp_passeport || '—' },
                     { l: 'Médical', v: sel.medical || 'Aucun' },
                     { l: 'Statut', v: STATUT_CONFIG[sel.statut]?.label || sel.statut },
@@ -465,14 +466,41 @@ export default function Pelerins() {
             <input className="input" type="number" value={form.prix_total || ''} onChange={e => set('prix_total', parseInt(e.target.value)||0)} placeholder="Saisir le prix de cette saison..." />
             <p className="text-xs text-gray-400 mt-1">Le prix varie selon les saisons — saisir le montant exact.</p>
           </div>
-          <div><label className="label">Montant payé (FCFA)</label><input className="input" type="number" value={form.montant_paye} onChange={e => set('montant_paye', parseInt(e.target.value)||0)} /></div>
+
           <div><label className="label">Départ</label>
             <select className="input" value={form.depart_id} onChange={e => set('depart_id', e.target.value)}>
               <option value="">— Choisir un départ —</option>
               {departs.map(d => <option key={d.id} value={d.id}>{d.nom}</option>)}
             </select>
           </div>
-          <div><label className="label">N° Passeport</label><input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" /></div>
+          <div>
+            <label className="label">N° Passeport</label>
+            <input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" />
+          </div>
+          <div className="col-span-2">
+            <label className="label">Statut passeport</label>
+            <div className="flex gap-2 mt-1">
+              {[
+                { val: 'non_recu', label: '❌ À recevoir',  bg: '#FEE2E2', color: '#DC2626', activeBg: '#DC2626' },
+                { val: 'en_cours', label: '⏳ En cours',    bg: '#FEF3C7', color: '#D97706', activeBg: '#D97706' },
+                { val: 'recu',     label: '✅ Reçu',        bg: '#D1FAE5', color: '#059669', activeBg: '#059669' },
+              ].map(opt => {
+                const active = (form.statut_passeport || 'non_recu') === opt.val
+                return (
+                  <button key={opt.val} type="button"
+                    onClick={() => set('statut_passeport', opt.val)}
+                    className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
+                    style={{
+                      background: active ? opt.activeBg : opt.bg,
+                      color: active ? 'white' : opt.color,
+                      border: `2px solid ${active ? opt.activeBg : 'transparent'}`,
+                    }}>
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           <div><label className="label">Expiration passeport</label><input className="input" type="date" value={form.exp_passeport} onChange={e => set('exp_passeport', e.target.value)} /></div>
           <div className="col-span-2"><label className="label">Informations médicales</label><input className="input" value={form.medical} onChange={e => set('medical', e.target.value)} placeholder="Tension, diabète..." /></div>
           <div><label className="label">Première Oumrah ?</label>
