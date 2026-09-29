@@ -1,15 +1,31 @@
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useAuth } from './useAuth'
 
 const NAV = [
   { href: '/',            icon: '🏠', label: 'Tableau de bord' },
   { href: '/pelerins',    icon: '👥', label: 'Pèlerins' },
+  { href: '/pipeline',    icon: '🎯', label: 'Pipeline' },
   { href: '/departs',     icon: '✈️', label: 'Départs' },
   { href: '/finances',    icon: '💰', label: 'Finances' },
   { href: '/documents',   icon: '📄', label: 'Documents' },
 ]
+
+// Composant de lien de navigation
+function NavLink({ href, icon, label, active, onClick }) {
+  return (
+    <a
+      href={href}
+      onClick={e => { e.preventDefault(); onClick(); window.location.href = href }}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+        active ? 'text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
+      }`}
+      style={active ? { background: 'rgba(255,255,255,0.15)' } : {}}>
+      <span>{icon}</span>
+      <span>{label}</span>
+    </a>
+  )
+}
 
 export default function Layout({ children, title, action }) {
   const router = useRouter()
@@ -19,7 +35,10 @@ export default function Layout({ children, title, action }) {
   // Redirection si non connecté
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login')
+      const timer = setTimeout(() => {
+        router.push('/login')
+      }, 100)
+      return () => clearTimeout(timer)
     }
   }, [user, loading, router])
 
@@ -73,17 +92,14 @@ export default function Layout({ children, title, action }) {
           {NAV.map(item => {
             const active = router.pathname === item.href
             return (
-              <Link key={item.href} href={item.href}
+              <NavLink
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+                active={active}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                  active
-                    ? 'text-white'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
-                }`}
-                style={active ? { background: 'rgba(255,255,255,0.15)' } : {}}>
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
+              />
             )
           })}
         </nav>
