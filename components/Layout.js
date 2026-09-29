@@ -3,12 +3,12 @@ import { useRouter } from 'next/router'
 import { useAuth } from './useAuth'
 
 const NAV = [
-  { href: '/',            icon: '🏠', label: 'Tableau de bord' },
-  { href: '/pelerins',    icon: '👥', label: 'Pèlerins' },
-  { href: '/pipeline',    icon: '🎯', label: 'Pipeline' },
-  { href: '/departs',     icon: '✈️', label: 'Départs' },
-  { href: '/finances',    icon: '💰', label: 'Finances' },
-  { href: '/documents',   icon: '📄', label: 'Documents' },
+  { href: '/',            icon: '🏠', label: 'Tableau de bord', adminOnly: false },
+  { href: '/pelerins',    icon: '👥', label: 'Pèlerins',        adminOnly: false },
+  { href: '/pipeline',    icon: '🎯', label: 'Pipeline',        adminOnly: false },
+  { href: '/departs',     icon: '✈️', label: 'Départs',         adminOnly: false },
+  { href: '/finances',    icon: '💰', label: 'Finances',        adminOnly: true  },
+  { href: '/documents',   icon: '📄', label: 'Documents',       adminOnly: false },
 ]
 
 // Composant de lien de navigation
@@ -89,7 +89,7 @@ export default function Layout({ children, title, action }) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
-          {NAV.map(item => {
+          {NAV.filter(item => !item.adminOnly || user?.role === 'admin').map(item => {
             const active = router.pathname === item.href
             return (
               <NavLink
