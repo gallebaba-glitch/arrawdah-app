@@ -82,11 +82,25 @@ export default function Pelerins() {
 
   async function save() {
     if (!form.prenom || !form.nom) { alert('Prénom et nom obligatoires'); return }
-    const data = { ...form, depart_id: form.depart_id || null }
+    const data = {
+      ...form,
+      depart_id: form.depart_id || null,
+      num_passeport: form.num_passeport || null,
+      exp_passeport: form.exp_passeport || null,
+      date_naissance: form.date_naissance || null,
+      statut_passeport: form.statut_passeport || 'non_recu',
+    }
+    let error
     if (form.id) {
-      await supabase.from('pelerins').update(data).eq('id', form.id)
+      const res = await supabase.from('pelerins').update(data).eq('id', form.id)
+      error = res.error
     } else {
-      await supabase.from('pelerins').insert([data])
+      const res = await supabase.from('pelerins').insert([data])
+      error = res.error
+    }
+    if (error) {
+      alert('Erreur lors de l'enregistrement : ' + error.message)
+      return
     }
     setModalOpen(false)
     setSelected(null)
