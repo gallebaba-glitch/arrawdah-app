@@ -473,35 +473,45 @@ export default function Pelerins() {
               {departs.map(d => <option key={d.id} value={d.id}>{d.nom}</option>)}
             </select>
           </div>
-          <div>
-            <label className="label">N° Passeport</label>
-            <input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" />
-          </div>
+
           <div className="col-span-2">
-            <label className="label">Statut passeport</label>
+            <label className="label">Passeport</label>
             <div className="flex gap-2 mt-1">
-              {[
-                { val: 'non_recu', label: '❌ À recevoir',  bg: '#FEE2E2', color: '#DC2626', activeBg: '#DC2626' },
-                { val: 'en_cours', label: '⏳ En cours',    bg: '#FEF3C7', color: '#D97706', activeBg: '#D97706' },
-                { val: 'recu',     label: '✅ Reçu',        bg: '#D1FAE5', color: '#059669', activeBg: '#059669' },
-              ].map(opt => {
-                const active = (form.statut_passeport || 'non_recu') === opt.val
-                return (
-                  <button key={opt.val} type="button"
-                    onClick={() => set('statut_passeport', opt.val)}
-                    className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
-                    style={{
-                      background: active ? opt.activeBg : opt.bg,
-                      color: active ? 'white' : opt.color,
-                      border: `2px solid ${active ? opt.activeBg : 'transparent'}`,
-                    }}>
-                    {opt.label}
-                  </button>
-                )
-              })}
+              <button type="button"
+                onClick={() => { set('statut_passeport', 'recu'); set('doc_passeport', true) }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                style={{
+                  background: (form.statut_passeport || 'non_recu') === 'recu' ? '#059669' : '#D1FAE5',
+                  color: (form.statut_passeport || 'non_recu') === 'recu' ? 'white' : '#059669',
+                  border: '2px solid #059669',
+                }}>
+                ✅ Reçu
+              </button>
+              <button type="button"
+                onClick={() => { set('statut_passeport', 'non_recu'); set('doc_passeport', false); set('num_passeport', ''); set('exp_passeport', '') }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                style={{
+                  background: (form.statut_passeport || 'non_recu') === 'non_recu' ? '#DC2626' : '#FEE2E2',
+                  color: (form.statut_passeport || 'non_recu') === 'non_recu' ? 'white' : '#DC2626',
+                  border: '2px solid #DC2626',
+                }}>
+                ❌ Non reçu
+              </button>
             </div>
           </div>
-          <div><label className="label">Expiration passeport</label><input className="input" type="date" value={form.exp_passeport} onChange={e => set('exp_passeport', e.target.value)} /></div>
+          {(form.statut_passeport || 'non_recu') === 'recu' && (
+            <>
+              <div>
+                <label className="label">N° Passeport</label>
+                <input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" />
+              </div>
+              <div>
+                <label className="label">Expiration passeport</label>
+                <input className="input" type="date" value={form.exp_passeport} onChange={e => set('exp_passeport', e.target.value)} />
+              </div>
+            </>
+          )}
+
           <div className="col-span-2"><label className="label">Informations médicales</label><input className="input" value={form.medical} onChange={e => set('medical', e.target.value)} placeholder="Tension, diabète..." /></div>
           <div><label className="label">Première Oumrah ?</label>
             <select className="input" value={form.premiere_oumrah ? 'true' : 'false'} onChange={e => set('premiere_oumrah', e.target.value === 'true')}>
