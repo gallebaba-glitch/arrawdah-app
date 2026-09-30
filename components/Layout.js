@@ -5,7 +5,7 @@ import { useAuth } from './useAuth'
 const NAV = [
   { href: '/',            icon: '🏠', label: 'Tableau de bord', adminOnly: false },
   { href: '/pelerins',    icon: '👥', label: 'Pèlerins',        adminOnly: false },
-  { href: '/pipeline',    icon: '🎯', label: 'Pipeline',        adminOnly: false },
+  { href: '/pipeline',    icon: '🎯', label: 'Prospects',       adminOnly: false },
   { href: '/departs',     icon: '✈️', label: 'Départs',         adminOnly: false },
   { href: '/finances',    icon: '💰', label: 'Finances',        adminOnly: true  },
   { href: '/documents',   icon: '📄', label: 'Documents',       adminOnly: false },
