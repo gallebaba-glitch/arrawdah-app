@@ -88,16 +88,30 @@ export default function Pipeline() {
     if (!form.nom) { alert('Nom obligatoire'); return }
     setSaving(true)
     const data = {
-      ...form,
+      nom: form.nom || '',
+      prenom: form.prenom || '',
+      telephone: form.telephone || '',
+      formule: form.formule || 'ZEN',
       depart_id: form.depart_id || null,
+      statut: form.statut || 'contacte',
+      commentaire: form.commentaire || '',
+      rappel_date: form.rappel_date || null,
       dernier_contact_par: user?.nom || '',
       dernier_contact_date: new Date().toISOString().split('T')[0],
       updated_at: new Date().toISOString(),
     }
+    let error
     if (selected) {
-      await supabase.from('pipeline').update(data).eq('id', selected)
+      const res = await supabase.from('pipeline').update(data).eq('id', selected)
+      error = res.error
     } else {
-      await supabase.from('pipeline').insert([data])
+      const res = await supabase.from('pipeline').insert([data])
+      error = res.error
+    }
+    if (error) {
+      alert('Erreur : ' + error.message)
+      setSaving(false)
+      return
     }
     setModalOpen(false)
     setSaving(false)
