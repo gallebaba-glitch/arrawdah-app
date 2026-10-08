@@ -3,7 +3,6 @@ import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../components/useAuth'
 
 const STATUT_CONFIG = {
   inscrit:  { label: 'Inscrit',  class: 'badge-warn', color: '#ED8936' },
@@ -15,16 +14,11 @@ const STATUT_CONFIG = {
 const EMPTY = {
   prenom: '', nom: '', telephone: '', tel_famille: '',
   date_naissance: '', sexe: 'homme', premiere_oumrah: true, formule: 'ZEN', prix_total: 0,
-  montant_paye: 0, depart_id: '', num_passeport: '', statut_passeport: 'non_recu',
+  montant_paye: 0, depart_id: '', num_passeport: '',
   exp_passeport: '', medical: '', statut: 'inscrit',
   doc_passeport: false, doc_photo: false, doc_vaccin: false, doc_vaccin_fy: false,
   doc_visa: false, doc_billet: false, notes: '',
-}
-
-const EMPTY_PAIEMENT = {
-  montant: '',
-  date_paiement: new Date().toISOString().split('T')[0],
-  note: '',
+  option_tgv: false, ville_depart_tgv: '', ville_arrivee_tgv: '', date_tgv: '', ref_tgv: '',
 }
 
 function getInitials(p) {
@@ -41,7 +35,6 @@ function getDossierStatus(p) {
 
 export default function Pelerins() {
   const router = useRouter()
-  const { user } = useAuth()
   const [pelerins, setPelerins] = useState([])
   const [departs, setDeparts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -51,10 +44,6 @@ export default function Pelerins() {
   const [search, setSearch] = useState('')
   const [filterStatut, setFilterStatut] = useState('tous')
   const [filterFormule, setFilterFormule] = useState('tous')
-  const [paiements, setPaiements] = useState([])
-  const [paiementModal, setPaiementModal] = useState(false)
-  const [paiementForm, setPaiementForm] = useState(EMPTY_PAIEMENT)
-  const [savingPaiement, setSavingPaiement] = useState(false)
 
   useEffect(() => { fetchAll() }, [])
 
@@ -69,38 +58,15 @@ export default function Pelerins() {
     setLoading(false)
   }
 
-  async function fetchPaiements(pelerinId) {
-    const { data } = await supabase
-      .from('paiements')
-      .select('*')
-      .eq('pelerin_id', pelerinId)
-      .order('date_paiement', { ascending: true })
-    setPaiements(data || [])
-  }
-
   function openNew() { setForm(EMPTY); setModalOpen(true) }
 
   async function save() {
     if (!form.prenom || !form.nom) { alert('Prénom et nom obligatoires'); return }
-    const data = {
-      ...form,
-      depart_id: form.depart_id || null,
-      num_passeport: form.num_passeport || null,
-      exp_passeport: form.exp_passeport || null,
-      date_naissance: form.date_naissance || null,
-      statut_passeport: form.statut_passeport || 'non_recu',
-    }
-    let error
+    const data = { ...form, depart_id: form.depart_id || null }
     if (form.id) {
-      const res = await supabase.from('pelerins').update(data).eq('id', form.id)
-      error = res.error
+      await supabase.from('pelerins').update(data).eq('id', form.id)
     } else {
-      const res = await supabase.from('pelerins').insert([data])
-      error = res.error
-    }
-    if (error) {
-      alert("Erreur : " + error.message)
-      return
+      await supabase.from('pelerins').insert([data])
     }
     setModalOpen(false)
     setSelected(null)
@@ -115,53 +81,6 @@ export default function Pelerins() {
     fetchAll()
   }
 
-  async function ajouterPaiement() {
-    if (!paiementForm.montant || !paiementForm.date_paiement) {
-      alert('Montant et date obligatoires')
-      return
-    }
-    setSavingPaiement(true)
-    const montant = parseInt(paiementForm.montant) || 0
-
-    // Enregistrer dans la table paiements
-    await supabase.from('paiements').insert([{
-      pelerin_id: selected,
-      montant,
-      date_paiement: paiementForm.date_paiement,
-      note: paiementForm.note || '',
-    }])
-
-    // Mettre à jour montant_paye dans pelerins
-    const sel = pelerins.find(x => x.id === selected)
-    const nouveauTotal = (sel?.montant_paye || 0) + montant
-    await supabase.from('pelerins').update({ montant_paye: nouveauTotal }).eq('id', selected)
-
-    // Rafraîchir
-    await fetchAll()
-    await fetchPaiements(selected)
-    setPaiementModal(false)
-    setPaiementForm(EMPTY_PAIEMENT)
-    setSavingPaiement(false)
-  }
-
-  async function supprimerPaiement(paiementId, montant) {
-    if (!confirm('Supprimer ce paiement ?')) return
-    await supabase.from('paiements').delete().eq('id', paiementId)
-    // Recalculer montant_paye
-    const sel = pelerins.find(x => x.id === selected)
-    const nouveauTotal = Math.max(0, (sel?.montant_paye || 0) - montant)
-    await supabase.from('pelerins').update({ montant_paye: nouveauTotal }).eq('id', selected)
-    await fetchAll()
-    await fetchPaiements(selected)
-  }
-
-  function selectPelerin(id) {
-    const newId = id === selected ? null : id
-    setSelected(newId)
-    if (newId) fetchPaiements(newId)
-    else setPaiements([])
-  }
-
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
   const filtered = pelerins.filter(p => {
@@ -172,12 +91,9 @@ export default function Pelerins() {
   })
 
   const getDep = id => departs.find(d => d.id == id)?.nom || '—'
+
   const sel = selected ? pelerins.find(x => x.id === selected) : null
-  const totalPaye = paiements.length > 0
-    ? paiements.reduce((s, p) => s + (p.montant || 0), 0)
-    : (sel?.montant_paye || 0)
-  const pct = sel ? Math.round((totalPaye / (sel.prix_total || 1)) * 100) : 0
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—'
+  const pct = sel ? Math.round(((sel.montant_paye || 0) / (sel.prix_total || 1)) * 100) : 0
 
   return (
     <Layout title={`Pèlerins (${pelerins.length})`} action={{ label: '+ Nouveau pèlerin', fn: openNew }}>
@@ -185,6 +101,8 @@ export default function Pelerins() {
 
         {/* LISTE */}
         <div className={sel ? 'w-1/2' : 'w-full'}>
+
+          {/* Filtres */}
           <div className="flex gap-3 mb-4">
             <input className="input flex-1" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
             <select className="input w-36" value={filterStatut} onChange={e => setFilterStatut(e.target.value)}>
@@ -195,8 +113,6 @@ export default function Pelerins() {
               <option value="tous">Toutes formules</option>
               <option value="ZEN">🌿 ZEN</option>
               <option value="ELITE">⭐ ELITE</option>
-              <option value="RAHMA">🤲 Rahma</option>
-              <option value="PERSONNALISE">✨ Personnalisée</option>
             </select>
           </div>
 
@@ -216,26 +132,31 @@ export default function Pelerins() {
                 const isActive = selected === p.id
                 return (
                   <div key={p.id}
-                    onClick={() => selectPelerin(p.id)}
+                    onClick={() => setSelected(isActive ? null : p.id)}
                     className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-all border-b border-gray-50 last:border-0
                       ${isActive ? 'bg-green-50 border-l-4 border-l-green-700' : 'hover:bg-gray-50'}`}>
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                    {/* Avatar */}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-yellow-700"
                          style={{ background: '#0F5229', color: '#C9A84C' }}>
                       {getInitials(p)}
                     </div>
+                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-800 truncate">{p.prenom} {p.nom}</div>
                       <div className="text-xs text-gray-400 mt-0.5">{getDep(p.depart_id)} · {p.formule} · {p.sexe === 'femme' ? '👩' : '👨'}</div>
                     </div>
+                    {/* Statut paiement */}
                     <div className="text-right flex-shrink-0">
                       <div className="text-xs font-semibold mb-1" style={{ color: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}>{paiePct}%</div>
                       <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: paiePct + '%', background: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}/>
                       </div>
                     </div>
+                    {/* Dossier */}
                     <span className={`badge ${ds === 'complet' ? 'badge-ok' : ds === 'incomplet' ? 'badge-err' : 'badge-warn'}`}>
                       {ds === 'complet' ? '✓' : ds === 'incomplet' ? '✗' : '⚠'}
                     </span>
+                    {/* Statut */}
                     <span className={`badge ${STATUT_CONFIG[p.statut]?.class || 'badge-gray'}`}>
                       {STATUT_CONFIG[p.statut]?.label || p.statut}
                     </span>
@@ -267,8 +188,7 @@ export default function Pelerins() {
                   {[
                     { l: 'Téléphone', v: sel.telephone || '—' },
                     { l: 'Famille', v: sel.tel_famille || '—' },
-                    { l: 'N° Passeport', v: sel.num_passeport || '—' },
-                    { l: 'Statut', v: sel.statut_passeport === 'recu' ? '✅ Reçu' : sel.statut_passeport === 'en_cours' ? '⏳ En cours' : '❌ À recevoir' },
+                    { l: 'Passeport', v: sel.num_passeport || '—' },
                     { l: 'Exp. passeport', v: sel.exp_passeport || '—' },
                     { l: 'Médical', v: sel.medical || 'Aucun' },
                     { l: 'Statut', v: STATUT_CONFIG[sel.statut]?.label || sel.statut },
@@ -280,63 +200,35 @@ export default function Pelerins() {
                   ))}
                 </div>
 
-                {/* Paiements */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="font-semibold text-gray-700 text-sm">💰 Paiements</div>
-                    <button
-                      onClick={() => { setPaiementForm(EMPTY_PAIEMENT); setPaiementModal(true) }}
-                      className="text-xs px-3 py-1.5 rounded-lg text-white font-semibold"
-                      style={{ background: '#0F5229' }}>
-                      + Ajouter un paiement
-                    </button>
+                {/* TGV */}
+                {sel.option_tgv && (
+                  <div className="rounded-lg border p-3" style={{ background: '#F0F4FF', borderColor: '#C7D2FE' }}>
+                    <div className="text-xs font-bold uppercase mb-2" style={{ color: '#3730A3' }}>🚄 Option TGV</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {sel.ville_depart_tgv && <div><span className="text-gray-400">Départ : </span><strong>{sel.ville_depart_tgv}</strong></div>}
+                      {sel.ville_arrivee_tgv && <div><span className="text-gray-400">Arrivée : </span><strong>{sel.ville_arrivee_tgv}</strong></div>}
+                      {sel.date_tgv && <div><span className="text-gray-400">Date : </span><strong>{sel.date_tgv}</strong></div>}
+                      {sel.ref_tgv && <div><span className="text-gray-400">Réf. billet : </span><strong>{sel.ref_tgv}</strong></div>}
+                    </div>
                   </div>
+                )}
 
-                  {/* Résumé */}
+                {/* Paiement */}
+                <div>
+                  <div className="font-semibold text-gray-700 mb-2 text-sm">💰 Paiement</div>
                   <div className="text-2xl font-bold mb-1" style={{ color: '#1A7A3C' }}>
-                    {totalPaye.toLocaleString('fr-FR')} FCFA
+                    {(sel.montant_paye||0).toLocaleString('fr-FR')} FCFA
                     <span className="text-sm font-normal text-gray-400 ml-1">/ {(sel.prix_total||0).toLocaleString('fr-FR')}</span>
                   </div>
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-1">
                     <div className="h-full rounded-full" style={{ width: pct + '%', background: '#1A7A3C' }}/>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-400 mb-3">
+                  <div className="flex justify-between text-xs text-gray-400">
                     <span>{pct}% payé</span>
                     <span className={pct < 100 ? 'text-red-500 font-semibold' : 'text-green-600 font-semibold'}>
-                      {pct < 100
-                        ? 'Reste : ' + ((sel.prix_total||0) - totalPaye).toLocaleString('fr-FR') + ' FCFA'
-                        : '✓ Soldé'}
+                      {pct < 100 ? 'Reste : ' + ((sel.prix_total||0)-(sel.montant_paye||0)).toLocaleString('fr-FR') + ' FCFA' : '✓ Soldé'}
                     </span>
                   </div>
-
-                  {/* Historique paiements */}
-                  {paiements.length > 0 && (
-                    <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#E5EDE8' }}>
-                      <div className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wide"
-                        style={{ background: '#F5FAF7' }}>
-                        Historique des paiements
-                      </div>
-                      {paiements.map((p, i) => (
-                        <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 border-t text-sm"
-                          style={{ borderColor: '#F0F0F0' }}>
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                            style={{ background: '#E8F5EE', color: '#0F5229' }}>{i+1}</div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold" style={{ color: '#1A7A3C' }}>
-                              {p.montant.toLocaleString('fr-FR')} FCFA
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              {fmtDate(p.date_paiement)}{p.note ? ` — ${p.note}` : ''}
-                            </div>
-                          </div>
-                          {user?.role === 'admin' && (
-                            <button onClick={() => supprimerPaiement(p.id, p.montant)}
-                              className="text-red-400 hover:text-red-600 text-xs px-1.5">✕</button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* Documents */}
@@ -376,10 +268,8 @@ export default function Pelerins() {
                     style={{background:'#FEF9E7',borderColor:'#F9E79F',color:'#B7950B',textDecoration:'none'}}>
                     🧾 Facture
                   </a>
-                  {user?.role === 'admin' && (
-                    <button onClick={() => supprimer(sel.id)}
-                      className="btn btn-danger text-sm">🗑️ Supprimer</button>
-                  )}
+                  <button onClick={() => supprimer(sel.id)}
+                    className="btn btn-danger text-sm">🗑️ Supprimer</button>
                 </div>
               </div>
             </div>
@@ -387,67 +277,7 @@ export default function Pelerins() {
         )}
       </div>
 
-      {/* MODAL PAIEMENT */}
-      {paiementModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
-            <div className="p-4 border-b" style={{ borderColor: '#E5EDE8' }}>
-              <div className="font-bold text-gray-800">💰 Ajouter un paiement</div>
-              <div className="text-sm text-gray-500 mt-0.5">
-                {sel?.prenom} {sel?.nom}
-              </div>
-            </div>
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="label">Montant (FCFA) *</label>
-                <input
-                  className="input"
-                  type="number"
-                  placeholder="ex: 500000"
-                  value={paiementForm.montant}
-                  onChange={e => setPaiementForm(f => ({ ...f, montant: e.target.value }))}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="label">Date du paiement *</label>
-                <input
-                  className="input"
-                  type="date"
-                  value={paiementForm.date_paiement}
-                  onChange={e => setPaiementForm(f => ({ ...f, date_paiement: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="label">Note (optionnel)</label>
-                <input
-                  className="input"
-                  placeholder="ex: Acompte, virement, solde..."
-                  value={paiementForm.note}
-                  onChange={e => setPaiementForm(f => ({ ...f, note: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="p-4 border-t flex gap-3" style={{ borderColor: '#E5EDE8' }}>
-              <button
-                onClick={() => setPaiementModal(false)}
-                className="flex-1 py-2 rounded-lg border text-sm font-semibold text-gray-500"
-                style={{ borderColor: '#E5EDE8' }}>
-                Annuler
-              </button>
-              <button
-                onClick={ajouterPaiement}
-                disabled={savingPaiement}
-                className="flex-1 py-2 rounded-lg text-white text-sm font-semibold"
-                style={{ background: savingPaiement ? '#6B9E7A' : '#0F5229' }}>
-                {savingPaiement ? 'Enregistrement...' : '✓ Enregistrer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL PÈLERIN */}
+      {/* MODAL */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}
         title={form.id ? 'Modifier le pèlerin' : 'Nouveau pèlerin'} onSave={save}>
         <div className="grid grid-cols-2 gap-4">
@@ -471,8 +301,6 @@ export default function Pelerins() {
             <select className="input" value={form.formule} onChange={e => { set('formule', e.target.value); set('prix_total', 0) }}>
               <option value="ZEN">🌿 Formule ZEN</option>
               <option value="ELITE">⭐ Formule ELITE</option>
-              <option value="RAHMA">🤲 Formule Rahma</option>
-              <option value="PERSONNALISE">✨ Formule Personnalisée</option>
             </select>
           </div>
           <div>
@@ -480,52 +308,15 @@ export default function Pelerins() {
             <input className="input" type="number" value={form.prix_total || ''} onChange={e => set('prix_total', parseInt(e.target.value)||0)} placeholder="Saisir le prix de cette saison..." />
             <p className="text-xs text-gray-400 mt-1">Le prix varie selon les saisons — saisir le montant exact.</p>
           </div>
-
+          <div><label className="label">Montant payé (FCFA)</label><input className="input" type="number" value={form.montant_paye} onChange={e => set('montant_paye', parseInt(e.target.value)||0)} /></div>
           <div><label className="label">Départ</label>
             <select className="input" value={form.depart_id} onChange={e => set('depart_id', e.target.value)}>
               <option value="">— Choisir un départ —</option>
               {departs.map(d => <option key={d.id} value={d.id}>{d.nom}</option>)}
             </select>
           </div>
-
-          <div className="col-span-2">
-            <label className="label">Passeport</label>
-            <div className="flex gap-2 mt-1">
-              <button type="button"
-                onClick={() => { set('statut_passeport', 'recu'); set('doc_passeport', true) }}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all"
-                style={{
-                  background: (form.statut_passeport || 'non_recu') === 'recu' ? '#059669' : '#D1FAE5',
-                  color: (form.statut_passeport || 'non_recu') === 'recu' ? 'white' : '#059669',
-                  border: '2px solid #059669',
-                }}>
-                ✅ Reçu
-              </button>
-              <button type="button"
-                onClick={() => { set('statut_passeport', 'non_recu'); set('doc_passeport', false); set('num_passeport', ''); set('exp_passeport', '') }}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all"
-                style={{
-                  background: (form.statut_passeport || 'non_recu') === 'non_recu' ? '#DC2626' : '#FEE2E2',
-                  color: (form.statut_passeport || 'non_recu') === 'non_recu' ? 'white' : '#DC2626',
-                  border: '2px solid #DC2626',
-                }}>
-                ❌ Non reçu
-              </button>
-            </div>
-          </div>
-          {(form.statut_passeport || 'non_recu') === 'recu' && (
-            <>
-              <div>
-                <label className="label">N° Passeport</label>
-                <input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" />
-              </div>
-              <div>
-                <label className="label">Expiration passeport</label>
-                <input className="input" type="date" value={form.exp_passeport} onChange={e => set('exp_passeport', e.target.value)} />
-              </div>
-            </>
-          )}
-
+          <div><label className="label">N° Passeport</label><input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" /></div>
+          <div><label className="label">Expiration passeport</label><input className="input" type="date" value={form.exp_passeport} onChange={e => set('exp_passeport', e.target.value)} /></div>
           <div className="col-span-2"><label className="label">Informations médicales</label><input className="input" value={form.medical} onChange={e => set('medical', e.target.value)} placeholder="Tension, diabète..." /></div>
           <div><label className="label">Première Oumrah ?</label>
             <select className="input" value={form.premiere_oumrah ? 'true' : 'false'} onChange={e => set('premiere_oumrah', e.target.value === 'true')}>
@@ -536,6 +327,37 @@ export default function Pelerins() {
           <div className="col-span-2"><label className="label">Notes internes</label>
             <textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Notes de l'équipe..." style={{minHeight:'60px',resize:'vertical'}} />
           </div>
+
+          {/* ── OPTION TGV ── */}
+          <div className="col-span-2">
+            <div className="rounded-lg border p-4" style={{ borderColor: '#C7D2FE', background: '#F5F7FF' }}>
+              <label className="flex items-center gap-3 cursor-pointer mb-3">
+                <input type="checkbox" checked={!!form.option_tgv} onChange={e => set('option_tgv', e.target.checked)} className="w-4 h-4 accent-indigo-700" />
+                <span className="font-semibold text-sm" style={{ color: '#3730A3' }}>🚄 Option TGV (transport terrestre)</span>
+              </label>
+              {form.option_tgv && (
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <label className="label">Ville de départ</label>
+                    <input className="input" value={form.ville_depart_tgv || ''} onChange={e => set('ville_depart_tgv', e.target.value)} placeholder="ex : Dakar, Paris..." />
+                  </div>
+                  <div>
+                    <label className="label">Ville d'arrivée</label>
+                    <input className="input" value={form.ville_arrivee_tgv || ''} onChange={e => set('ville_arrivee_tgv', e.target.value)} placeholder="ex : Jeddah, Médine..." />
+                  </div>
+                  <div>
+                    <label className="label">Date TGV</label>
+                    <input className="input" type="date" value={form.date_tgv || ''} onChange={e => set('date_tgv', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label">Réf. billet / N° train</label>
+                    <input className="input" value={form.ref_tgv || ''} onChange={e => set('ref_tgv', e.target.value)} placeholder="ex : TGV-2026-xxx" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="col-span-2">
             <label className="label">Documents reçus</label>
             <div className="flex flex-wrap gap-4 mt-2">
