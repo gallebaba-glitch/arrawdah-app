@@ -3,19 +3,11 @@ import { useRouter } from 'next/router'
 import { supabase } from '../../../lib/supabase'
 import Head from 'next/head'
 
+// Générer numéro de facture automatique
 function genNumeroFacture(pelerinId) {
   const year = new Date().getFullYear()
   const num = String(pelerinId).padStart(3, '0')
   return `AR-${year}-${num}`
-}
-
-// Noms des utilisateurs par email
-const USERS = {
-  'gallebaba@gmail.com':       'Ousmane Niang',
-  'mamyfall@icloud.com':       'Hajja Mamy Fall',
-  'o.solly@sollytrading.com':  'Sheikh Hussein Solly',
-  'madinaarawdah@gmail.com':   'Madina Diallo',
-  'mariemediagne79@gmail.com': 'Marieme Diagne',
 }
 
 export default function Facture() {
@@ -23,19 +15,7 @@ export default function Facture() {
   const { id } = router.query
   const [pelerin, setPelerin] = useState(null)
   const [depart, setDepart] = useState(null)
-  const [paiements, setPaiements] = useState([])
-  const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    // Récupérer l'utilisateur connecté
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const nom = USERS[session.user.email] || session.user.email
-        setCurrentUser(nom)
-      }
-    })
-  }, [])
 
   useEffect(() => { if (id) fetchData() }, [id])
 
@@ -47,13 +27,6 @@ export default function Facture() {
         const { data: d } = await supabase.from('departs').select('*').eq('id', p.depart_id).single()
         setDepart(d)
       }
-      // Charger les paiements
-      const { data: pays } = await supabase
-        .from('paiements')
-        .select('*')
-        .eq('pelerin_id', id)
-        .order('date_paiement', { ascending: true })
-      setPaiements(pays || [])
     }
     setLoading(false)
   }
@@ -71,17 +44,13 @@ export default function Facture() {
   )
 
   const numeroFacture = genNumeroFacture(pelerin.id)
-  const totalPaye = paiements.length > 0
-    ? paiements.reduce((s, p) => s + (p.montant || 0), 0)
-    : (pelerin.montant_paye || 0)
-  const reste = (pelerin.prix_total || 0) - totalPaye
+  const prixBase = pelerin.prix_total || 0
+  const montantTgv = pelerin.option_tgv ? (pelerin.montant_tgv || 0) : 0
+  const totalGeneral = prixBase + montantTgv
+  const reste = totalGeneral - (pelerin.montant_paye || 0)
   const solde = reste <= 0
   const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })
-  const printTime = new Date().toLocaleString('fr-FR', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' })
-  const pct = pelerin.prix_total > 0 ? Math.round((totalPaye / pelerin.prix_total) * 100) : 0
-
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' }) : '—'
-  const fmtMontant = (n) => (n || 0).toLocaleString('fr-FR')
+  const pct = totalGeneral > 0 ? Math.round(((pelerin.montant_paye || 0) / totalGeneral) * 100) : 0
 
   return (
     <>
@@ -90,7 +59,7 @@ export default function Facture() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* Boutons action */}
+      {/* Boutons action — masqués à l'impression */}
       <div className="no-print" style={{
         position:'fixed', top:'16px', right:'16px', zIndex:100,
         display:'flex', gap:'8px'
@@ -130,6 +99,7 @@ export default function Facture() {
           justifyContent:'space-between',
           marginBottom:'10px',
         }}>
+          {/* Logo + Nom */}
           <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
             <img
               src="/logo-ar-rawdah.png"
@@ -142,13 +112,14 @@ export default function Facture() {
                 Ar Rawdah Travel Tour
               </div>
               <div style={{ fontSize:'10pt', color:'#666', marginTop:'3px' }}>
-                (221) 33 840 6161  |  contact@arrawdah.sn
+                (221) 33 840 6161  |  contact@arrawdah.com
               </div>
               <div style={{ fontSize:'10pt', color:'#666', marginTop:'2px' }}>
                 Cité Keur Gorgui, Dakar — Sénégal
               </div>
             </div>
           </div>
+          {/* Numéro facture */}
           <div style={{
             textAlign:'right',
             padding:'12px 18px',
@@ -171,7 +142,7 @@ export default function Facture() {
         {/* Ligne séparatrice */}
         <div style={{ borderTop:'2px solid #0F5229', marginBottom:'18px' }} />
 
-        {/* ══ STATUT ══ */}
+        {/* ══ STATUT FACTURE ══ */}
         <div style={{
           display:'inline-block',
           padding:'5px 16px',
@@ -186,15 +157,23 @@ export default function Facture() {
           {solde ? '✓ FACTURE SOLDÉE' : '⏳ PAIEMENT PARTIEL EN COURS'}
         </div>
 
-        {/* ══ INFOS CLIENT + VOYAGE ══ */}
+        {/* ══ GRILLE INFOS CLIENT + VOYAGE ══ */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'18px' }}>
 
           {/* Client */}
-          <div style={{ border:'1px solid #E5EDE8', borderRadius:'8px', overflow:'hidden' }}>
+          <div style={{
+            border:'1px solid #E5EDE8',
+            borderRadius:'8px',
+            overflow:'hidden',
+          }}>
             <div style={{
-              background:'#E8F5EE', padding:'8px 14px',
-              fontSize:'9pt', fontWeight:'bold', color:'#0F5229',
-              textTransform:'uppercase', letterSpacing:'0.5px',
+              background:'#E8F5EE',
+              padding:'8px 14px',
+              fontSize:'9pt',
+              fontWeight:'bold',
+              color:'#0F5229',
+              textTransform:'uppercase',
+              letterSpacing:'0.5px',
             }}>
               Informations client
             </div>
@@ -208,33 +187,37 @@ export default function Facture() {
             </div>
           </div>
 
-          {/* Voyage — sans guide */}
-          <div style={{ border:'1px solid #E5EDE8', borderRadius:'8px', overflow:'hidden' }}>
+          {/* Voyage */}
+          <div style={{
+            border:'1px solid #E5EDE8',
+            borderRadius:'8px',
+            overflow:'hidden',
+          }}>
             <div style={{
-              background:'#E8F5EE', padding:'8px 14px',
-              fontSize:'9pt', fontWeight:'bold', color:'#0F5229',
-              textTransform:'uppercase', letterSpacing:'0.5px',
+              background:'#E8F5EE',
+              padding:'8px 14px',
+              fontSize:'9pt',
+              fontWeight:'bold',
+              color:'#0F5229',
+              textTransform:'uppercase',
+              letterSpacing:'0.5px',
             }}>
               Détails du voyage
             </div>
             <div style={{ padding:'12px 14px' }}>
-              <InfoRow label="Formule" value={
-                pelerin.formule === 'ZEN' ? '🌿 Formule ZEN' :
-                pelerin.formule === 'ELITE' ? '⭐ Formule ELITE' :
-                pelerin.formule === 'RAHMA' ? '🤲 Formule Rahma' :
-                '✨ Formule Personnalisée'
-              } bold />
+              <InfoRow label="Formule" value={pelerin.formule === 'ZEN' ? '🌿 Formule ZEN' : '⭐ Formule ELITE'} bold />
               <InfoRow label="Départ" value={depart?.nom || '—'} />
               <InfoRow label="Date" value={
                 depart
                   ? `${depart.date_greg || ''}${depart.date_heg ? ' (' + depart.date_heg + ')' : ''}`
                   : '—'
               } />
+              <InfoRow label="Guide" value={depart?.guide || '—'} />
             </div>
           </div>
         </div>
 
-        {/* ══ HISTORIQUE DES PAIEMENTS ══ */}
+        {/* ══ TABLEAU FINANCIER ══ */}
         <div style={{
           border:'1px solid #E5EDE8',
           borderRadius:'8px',
@@ -253,91 +236,95 @@ export default function Facture() {
             Récapitulatif financier
           </div>
 
-          {/* En-tête */}
+          {/* En-tête tableau */}
           <div style={{
-            display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
+            display:'grid', gridTemplateColumns:'1fr 1fr',
             background:'#F5F5F5',
             padding:'8px 16px',
-            fontSize:'9pt', color:'#666',
-            fontWeight:'bold', textTransform:'uppercase', letterSpacing:'0.3px',
+            fontSize:'9pt',
+            color:'#666',
+            fontWeight:'bold',
+            textTransform:'uppercase',
+            letterSpacing:'0.3px',
           }}>
             <span>Description</span>
-            <span style={{ textAlign:'center' }}>Date</span>
             <span style={{ textAlign:'right' }}>Montant</span>
           </div>
 
-          {/* Prix total */}
+          {/* Ligne prix pack */}
           <div style={{
-            display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
+            display:'grid', gridTemplateColumns:'1fr 1fr',
             padding:'12px 16px',
             borderBottom:'1px solid #E5EDE8',
             fontSize:'11pt',
           }}>
-            <span style={{ color:'#333' }}>Pack Oumrah — Formule {pelerin.formule}</span>
-            <span style={{ textAlign:'center', color:'#666' }}>—</span>
+            <span style={{ color:'#333' }}>
+              Pack Oumrah — Formule {pelerin.formule}
+            </span>
             <span style={{ textAlign:'right', fontWeight:'bold', color:'#111' }}>
-              {fmtMontant(pelerin.prix_total)} FCFA
+              {prixBase.toLocaleString('fr-FR')} FCFA
             </span>
           </div>
 
-          {/* Paiements individuels */}
-          {paiements.length > 0 ? (
-            paiements.map((p, i) => (
-              <div key={p.id} style={{
-                display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
-                padding:'10px 16px',
-                borderBottom:'1px solid #F0F0F0',
-                fontSize:'10pt',
-                background: i % 2 === 0 ? '#F9FFF9' : 'white',
-              }}>
-                <span style={{ color:'#333' }}>
-                  Paiement {i + 1}{p.note ? ` — ${p.note}` : ''}
-                </span>
-                <span style={{ textAlign:'center', color:'#666' }}>
-                  {fmtDate(p.date_paiement)}
-                </span>
-                <span style={{ textAlign:'right', fontWeight:'bold', color:'#1A7A3C' }}>
-                  - {fmtMontant(p.montant)} FCFA
-                </span>
-              </div>
-            ))
-          ) : (
-            // Si pas de paiements enregistrés, afficher le montant global
-            pelerin.montant_paye > 0 && (
-              <div style={{
-                display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
-                padding:'10px 16px',
-                borderBottom:'1px solid #F0F0F0',
-                fontSize:'10pt',
-                background:'#F9FFF9',
-              }}>
-                <span style={{ color:'#333' }}>Paiement effectué</span>
-                <span style={{ textAlign:'center', color:'#666' }}>—</span>
-                <span style={{ textAlign:'right', fontWeight:'bold', color:'#1A7A3C' }}>
-                  - {fmtMontant(pelerin.montant_paye)} FCFA
-                </span>
-              </div>
-            )
+          {/* Ligne TGV (si option activée) */}
+          {pelerin.option_tgv && montantTgv > 0 && (
+            <div style={{
+              display:'grid', gridTemplateColumns:'1fr 1fr',
+              padding:'12px 16px',
+              borderBottom:'1px solid #E5EDE8',
+              fontSize:'11pt',
+              background:'#EFF6FF',
+            }}>
+              <span style={{ color:'#1D4ED8' }}>
+                🚄 Option TGV
+                {pelerin.ville_depart_tgv && pelerin.ville_arrivee_tgv
+                  ? ` — ${pelerin.ville_depart_tgv} → ${pelerin.ville_arrivee_tgv}`
+                  : ''}
+                {pelerin.date_tgv
+                  ? ` (${new Date(pelerin.date_tgv).toLocaleDateString('fr-FR')})`
+                  : ''}
+              </span>
+              <span style={{ textAlign:'right', fontWeight:'bold', color:'#1D4ED8' }}>
+                {montantTgv.toLocaleString('fr-FR')} FCFA
+              </span>
+            </div>
           )}
 
-          {/* Total payé */}
+          {/* Ligne total général (si TGV) */}
+          {pelerin.option_tgv && montantTgv > 0 && (
+            <div style={{
+              display:'grid', gridTemplateColumns:'1fr 1fr',
+              padding:'10px 16px',
+              borderBottom:'1px solid #E5EDE8',
+              fontSize:'11pt',
+              background:'#F8FAFC',
+            }}>
+              <span style={{ color:'#555', fontStyle:'italic' }}>Total général</span>
+              <span style={{ textAlign:'right', fontWeight:'bold', color:'#111' }}>
+                {totalGeneral.toLocaleString('fr-FR')} FCFA
+              </span>
+            </div>
+          )}
+
+          {/* Ligne montant payé */}
           <div style={{
-            display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
-            padding:'10px 16px',
+            display:'grid', gridTemplateColumns:'1fr 1fr',
+            padding:'12px 16px',
             borderBottom:'1px solid #E5EDE8',
-            fontSize:'10pt',
-            background:'#E8F5EE',
+            fontSize:'11pt',
+            background:'#F9FFF9',
           }}>
-            <span style={{ fontWeight:'bold', color:'#0F5229' }}>Total payé</span>
-            <span />
-            <span style={{ textAlign:'right', fontWeight:'bold', color:'#0F5229' }}>
-              {fmtMontant(totalPaye)} FCFA
+            <span style={{ color:'#333' }}>
+              Montant payé
+            </span>
+            <span style={{ textAlign:'right', fontWeight:'bold', color:'#1A7A3C' }}>
+              - {(pelerin.montant_paye || 0).toLocaleString('fr-FR')} FCFA
             </span>
           </div>
 
-          {/* Reste */}
+          {/* Ligne reste */}
           <div style={{
-            display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
+            display:'grid', gridTemplateColumns:'1fr 1fr',
             padding:'14px 16px',
             fontSize:'13pt',
             background: solde ? '#D1FAE5' : '#FEF3C7',
@@ -345,9 +332,8 @@ export default function Facture() {
             <span style={{ fontWeight:'bold', color: solde ? '#065F46' : '#92400E' }}>
               {solde ? '✓ Soldé' : 'Reste à payer'}
             </span>
-            <span />
             <span style={{ textAlign:'right', fontWeight:'bold', fontSize:'15pt', color: solde ? '#065F46' : '#D97706' }}>
-              {solde ? '0 FCFA' : fmtMontant(reste) + ' FCFA'}
+              {solde ? '0 FCFA' : reste.toLocaleString('fr-FR') + ' FCFA'}
             </span>
           </div>
         </div>
@@ -360,9 +346,10 @@ export default function Facture() {
           </div>
           <div style={{ height:'8px', background:'#E5E7EB', borderRadius:'4px', overflow:'hidden' }}>
             <div style={{
-              height:'100%', width:pct+'%',
+              height:'100%', width: Math.min(pct, 100) + '%',
               background: pct >= 100 ? '#1A7A3C' : '#ED8936',
               borderRadius:'4px',
+              transition:'width 0.3s',
             }} />
           </div>
         </div>
@@ -378,21 +365,16 @@ export default function Facture() {
           color:'#999',
         }}>
           <div>
-            <div style={{ marginBottom:'3px' }}>Ar Rawdah Travel Tour — Ar Rawdah As'Sherif SARL</div>
+            <div style={{ marginBottom:'3px' }}>Ar Rawdah Travel Tour — Rawda As'Sherif SARL</div>
             <div>Cité Keur Gorgui, Dakar — Sénégal</div>
           </div>
           <div style={{ textAlign:'right' }}>
             <div style={{ marginBottom:'3px' }}>Document officiel — {numeroFacture}</div>
             <div>Émis le {today}</div>
-            {currentUser && (
-              <div style={{ marginTop:'4px', color:'#BBB', fontStyle:'italic' }}>
-                Imprimé par {currentUser} le {printTime}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Note solde restant */}
+        {/* Note bas de page */}
         {!solde && (
           <div style={{
             marginTop:'16px',
@@ -403,7 +385,7 @@ export default function Facture() {
             color:'#92400E',
             borderLeft:'3px solid #F59E0B',
           }}>
-            <strong>Note :</strong> Le solde de {fmtMontant(reste)} FCFA doit être réglé avant le départ.
+            <strong>Note :</strong> Le solde de {reste.toLocaleString('fr-FR')} FCFA doit être réglé avant le départ.
             Pour tout paiement, contactez-nous au (221) 33 840 6161.
           </div>
         )}
@@ -434,6 +416,7 @@ export default function Facture() {
   )
 }
 
+// Composant helper
 function InfoRow({ label, value, bold }) {
   return (
     <div style={{
