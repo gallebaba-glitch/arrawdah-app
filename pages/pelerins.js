@@ -18,7 +18,7 @@ const EMPTY = {
   exp_passeport: '', medical: '', statut: 'inscrit',
   doc_passeport: false, doc_photo: false, doc_vaccin: false, doc_vaccin_fy: false,
   doc_visa: false, doc_billet: false, notes: '',
-  option_tgv: false, ville_depart_tgv: '', ville_arrivee_tgv: '', date_tgv: '', ref_tgv: '',
+  option_tgv: false, ville_depart_tgv: '', ville_arrivee_tgv: '', date_tgv: '', montant_tgv: 0,
 }
 
 function getInitials(p) {
@@ -143,7 +143,10 @@ export default function Pelerins() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-800 truncate">{p.prenom} {p.nom}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">{getDep(p.depart_id)} · {p.formule} · {p.sexe === 'femme' ? '👩' : '👨'}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        {getDep(p.depart_id)} · {p.formule} · {p.sexe === 'femme' ? '👩' : '👨'}
+                        {p.option_tgv && <span className="ml-1 text-blue-500">🚄 TGV</span>}
+                      </div>
                     </div>
                     {/* Statut paiement */}
                     <div className="text-right flex-shrink-0">
@@ -200,15 +203,33 @@ export default function Pelerins() {
                   ))}
                 </div>
 
-                {/* TGV */}
+                {/* Option TGV */}
                 {sel.option_tgv && (
-                  <div className="rounded-lg border p-3" style={{ background: '#F0F4FF', borderColor: '#C7D2FE' }}>
-                    <div className="text-xs font-bold uppercase mb-2" style={{ color: '#3730A3' }}>🚄 Option TGV</div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {sel.ville_depart_tgv && <div><span className="text-gray-400">Départ : </span><strong>{sel.ville_depart_tgv}</strong></div>}
-                      {sel.ville_arrivee_tgv && <div><span className="text-gray-400">Arrivée : </span><strong>{sel.ville_arrivee_tgv}</strong></div>}
-                      {sel.date_tgv && <div><span className="text-gray-400">Date : </span><strong>{sel.date_tgv}</strong></div>}
-                      {sel.ref_tgv && <div><span className="text-gray-400">Réf. billet : </span><strong>{sel.ref_tgv}</strong></div>}
+                  <div>
+                    <div className="font-semibold text-gray-700 mb-2 text-sm">🚄 Option TGV</div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Départ</div>
+                          <div className="text-sm font-semibold text-blue-800">{sel.ville_depart_tgv || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Arrivée</div>
+                          <div className="text-sm font-semibold text-blue-800">{sel.ville_arrivee_tgv || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Date</div>
+                          <div className="text-sm font-semibold text-blue-800">
+                            {sel.date_tgv ? new Date(sel.date_tgv).toLocaleDateString('fr-FR') : '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Montant TGV</div>
+                          <div className="text-sm font-bold text-blue-900">
+                            {(sel.montant_tgv || 0).toLocaleString('fr-FR')} FCFA
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -327,37 +348,6 @@ export default function Pelerins() {
           <div className="col-span-2"><label className="label">Notes internes</label>
             <textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Notes de l'équipe..." style={{minHeight:'60px',resize:'vertical'}} />
           </div>
-
-          {/* ── OPTION TGV ── */}
-          <div className="col-span-2">
-            <div className="rounded-lg border p-4" style={{ borderColor: '#C7D2FE', background: '#F5F7FF' }}>
-              <label className="flex items-center gap-3 cursor-pointer mb-3">
-                <input type="checkbox" checked={!!form.option_tgv} onChange={e => set('option_tgv', e.target.checked)} className="w-4 h-4 accent-indigo-700" />
-                <span className="font-semibold text-sm" style={{ color: '#3730A3' }}>🚄 Option TGV (transport terrestre)</span>
-              </label>
-              {form.option_tgv && (
-                <div className="grid grid-cols-2 gap-3 mt-2">
-                  <div>
-                    <label className="label">Ville de départ</label>
-                    <input className="input" value={form.ville_depart_tgv || ''} onChange={e => set('ville_depart_tgv', e.target.value)} placeholder="ex : Dakar, Paris..." />
-                  </div>
-                  <div>
-                    <label className="label">Ville d'arrivée</label>
-                    <input className="input" value={form.ville_arrivee_tgv || ''} onChange={e => set('ville_arrivee_tgv', e.target.value)} placeholder="ex : Jeddah, Médine..." />
-                  </div>
-                  <div>
-                    <label className="label">Date TGV</label>
-                    <input className="input" type="date" value={form.date_tgv || ''} onChange={e => set('date_tgv', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="label">Réf. billet / N° train</label>
-                    <input className="input" value={form.ref_tgv || ''} onChange={e => set('ref_tgv', e.target.value)} placeholder="ex : TGV-2026-xxx" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
           <div className="col-span-2">
             <label className="label">Documents reçus</label>
             <div className="flex flex-wrap gap-4 mt-2">
@@ -369,6 +359,39 @@ export default function Pelerins() {
               ))}
             </div>
           </div>
+
+          {/* ── OPTION TGV ── */}
+          <div className="col-span-2">
+            <div className="border border-blue-200 rounded-lg overflow-hidden">
+              <div className="bg-blue-50 px-4 py-2 flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.option_tgv || false} onChange={e => set('option_tgv', e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                  <span className="font-semibold text-blue-800 text-sm">🚄 Option TGV</span>
+                </label>
+              </div>
+              {form.option_tgv && (
+                <div className="p-4 bg-white grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label text-blue-700">Ville de départ</label>
+                    <input className="input" value={form.ville_depart_tgv || ''} onChange={e => set('ville_depart_tgv', e.target.value)} placeholder="Ex : Lyon" />
+                  </div>
+                  <div>
+                    <label className="label text-blue-700">Ville d'arrivée</label>
+                    <input className="input" value={form.ville_arrivee_tgv || ''} onChange={e => set('ville_arrivee_tgv', e.target.value)} placeholder="Ex : Paris CDG" />
+                  </div>
+                  <div>
+                    <label className="label text-blue-700">Date du TGV</label>
+                    <input className="input" type="date" value={form.date_tgv || ''} onChange={e => set('date_tgv', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label text-blue-700">Montant TGV (FCFA)</label>
+                    <input className="input" type="number" value={form.montant_tgv || ''} onChange={e => set('montant_tgv', parseInt(e.target.value)||0)} placeholder="Ex : 50000" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </Modal>
     </Layout>
