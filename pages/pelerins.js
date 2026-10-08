@@ -16,7 +16,7 @@ const EMPTY = {
   date_naissance: '', sexe: 'homme', premiere_oumrah: true, formule: 'ZEN', prix_total: 0,
   montant_paye: 0, depart_id: '', num_passeport: '',
   exp_passeport: '', medical: '', statut: 'inscrit',
-  doc_passeport: false, doc_photo: false, doc_vaccin: false, doc_vaccin_fy: false,
+  doc_passeport: false, doc_photo: false, doc_vaccin: false,
   doc_visa: false, doc_billet: false, notes: '',
   option_tgv: false, ville_depart_tgv: '', ville_arrivee_tgv: '', date_tgv: '', montant_tgv: 0,
 }
@@ -26,7 +26,7 @@ function getInitials(p) {
 }
 
 function getDossierStatus(p) {
-  const docs = [p.doc_passeport, p.doc_photo, p.doc_vaccin, p.doc_vaccin_fy, p.doc_visa, p.doc_billet]
+  const docs = [p.doc_passeport, p.doc_photo, p.doc_vaccin, p.doc_visa, p.doc_billet]
   const ok = docs.filter(Boolean).length
   if (ok === docs.length) return 'complet'
   if (ok === 0) return 'incomplet'
@@ -259,8 +259,7 @@ export default function Pelerins() {
                     {[
                       { key: 'doc_passeport', label: 'Passeport' },
                       { key: 'doc_photo',     label: 'Photo identité' },
-                      { key: 'doc_vaccin',    label: 'Vaccin méningite' },
-                      { key: 'doc_vaccin_fy', label: 'Vaccin fièvre jaune' },
+                      { key: 'doc_vaccin',    label: 'Vaccination' },
                       { key: 'doc_visa',      label: 'Visa Oumrah' },
                       { key: 'doc_billet',    label: 'Billet avion' },
                     ].map(d => (
@@ -351,7 +350,7 @@ export default function Pelerins() {
           <div className="col-span-2">
             <label className="label">Documents reçus</label>
             <div className="flex flex-wrap gap-4 mt-2">
-              {[['doc_passeport','Passeport'],['doc_photo','Photo'],['doc_vaccin','Méningite'],['doc_vaccin_fy','Fièvre jaune'],['doc_visa','Visa'],['doc_billet','Billet']].map(([k,l]) => (
+              {[['doc_passeport','Passeport'],['doc_photo','Photo'],['doc_vaccin','Vaccination'],['doc_visa','Visa'],['doc_billet','Billet']].map(([k,l]) => (
                 <label key={k} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={form[k]} onChange={e => set(k, e.target.checked)} className="w-4 h-4 accent-green-700" />
                   {l}
@@ -373,11 +372,29 @@ export default function Pelerins() {
                 <div className="p-4 bg-white grid grid-cols-2 gap-3">
                   <div>
                     <label className="label text-blue-700">Ville de départ</label>
-                    <input className="input" value={form.ville_depart_tgv || ''} onChange={e => set('ville_depart_tgv', e.target.value)} placeholder="Ex : Lyon" />
+                    <select className="input" value={form.ville_depart_tgv || ''} onChange={e => {
+                      const dep = e.target.value
+                      const arr = dep === 'Médine' ? 'Djeddah' : dep === 'Djeddah' ? 'Médine' : ''
+                      set('ville_depart_tgv', dep)
+                      set('ville_arrivee_tgv', arr)
+                    }}>
+                      <option value="">— Choisir —</option>
+                      <option value="Médine">Médine</option>
+                      <option value="Djeddah">Djeddah</option>
+                    </select>
                   </div>
                   <div>
                     <label className="label text-blue-700">Ville d'arrivée</label>
-                    <input className="input" value={form.ville_arrivee_tgv || ''} onChange={e => set('ville_arrivee_tgv', e.target.value)} placeholder="Ex : Paris CDG" />
+                    <select className="input" value={form.ville_arrivee_tgv || ''} onChange={e => {
+                      const arr = e.target.value
+                      const dep = arr === 'Médine' ? 'Djeddah' : arr === 'Djeddah' ? 'Médine' : ''
+                      set('ville_arrivee_tgv', arr)
+                      set('ville_depart_tgv', dep)
+                    }}>
+                      <option value="">— Choisir —</option>
+                      <option value="Médine">Médine</option>
+                      <option value="Djeddah">Djeddah</option>
+                    </select>
                   </div>
                   <div>
                     <label className="label text-blue-700">Date du TGV</label>
