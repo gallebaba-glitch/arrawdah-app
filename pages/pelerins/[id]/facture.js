@@ -142,7 +142,7 @@ export default function Facture() {
                 Ar Rawdah Travel Tour
               </div>
               <div style={{ fontSize:'10pt', color:'#666', marginTop:'3px' }}>
-                (221) 77-120-5151  |  contact@arrawdah.sn
+                (221) 33 840 6161  |  contact@arrawdah.sn
               </div>
               <div style={{ fontSize:'10pt', color:'#666', marginTop:'2px' }}>
                 Cité Keur Gorgui, Dakar — Sénégal
@@ -404,7 +404,7 @@ export default function Facture() {
             borderLeft:'3px solid #F59E0B',
           }}>
             <strong>Note :</strong> Le solde de {fmtMontant(reste)} FCFA doit être réglé avant le départ.
-            Pour tout paiement, contactez-nous au (221) 77-120-5151.
+            Pour tout paiement, contactez-nous au (221) 33 840 6161.
           </div>
         )}
 
