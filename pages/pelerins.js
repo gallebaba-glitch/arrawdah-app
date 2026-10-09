@@ -22,6 +22,7 @@ const EMPTY = {
   doc_passeport: false, doc_photo: false, doc_vaccin: false,
   doc_visa: false, doc_billet: false, notes: '',
   option_tgv: false, montant_tgv: 0,
+  cree_par: '',
 }
 
 function getInitials(p) {
@@ -50,7 +51,8 @@ export default function Pelerins() {
 
   // Paiements
   const [paiements, setPaiements] = useState([])
-  const [paiementForm, setPaiementForm] = useState({ montant: '', mode: 'Wave', notes: '' })
+  const today = new Date().toISOString().split('T')[0]
+  const [paiementForm, setPaiementForm] = useState({ montant: '', mode: 'Wave', notes: '', date_paiement: today, encaisse_par: '' })
   const [paiementLoading, setPaiementLoading] = useState(false)
   const [showPaiementForm, setShowPaiementForm] = useState(false)
 
@@ -111,12 +113,14 @@ export default function Pelerins() {
       montant,
       mode: paiementForm.mode,
       notes: paiementForm.notes || null,
+      date_paiement: paiementForm.date_paiement || today,
+      encaisse_par: paiementForm.encaisse_par || null,
     }])
     // Mettre à jour montant_paye dans pelerins
     const pelerin = pelerins.find(p => p.id === pelerinId)
     const nouveauTotal = (pelerin?.montant_paye || 0) + montant
     await supabase.from('pelerins').update({ montant_paye: nouveauTotal }).eq('id', pelerinId)
-    setPaiementForm({ montant: '', mode: 'Wave', notes: '' })
+    setPaiementForm({ montant: '', mode: 'Wave', notes: '', date_paiement: today, encaisse_par: '' })
     setShowPaiementForm(false)
     setPaiementLoading(false)
     fetchAll()
@@ -266,6 +270,7 @@ export default function Pelerins() {
                     { l: 'Exp. passeport', v: sel.passeport_recu ? (sel.exp_passeport || '—') : '—' },
                     { l: 'Médical', v: sel.medical || 'Aucun' },
                     { l: 'Statut', v: STATUT_CONFIG[sel.statut]?.label || sel.statut },
+                    ...(sel.cree_par ? [{ l: '👤 Créé par', v: sel.cree_par }] : []),
                   ].map(({ l, v }) => (
                     <div key={l} className="bg-gray-50 rounded-lg p-3">
                       <div className="text-xs text-gray-400 uppercase font-semibold mb-1">{l}</div>
@@ -322,6 +327,24 @@ export default function Pelerins() {
                             {MODE_PAIEMENT.map(m => <option key={m} value={m}>{MODE_ICONS[m]} {m}</option>)}
                           </select>
                         </div>
+                        <div>
+                          <label className="text-xs text-gray-500 font-semibold uppercase mb-1 block">📅 Date de réception</label>
+                          <input
+                            className="input text-sm"
+                            type="date"
+                            value={paiementForm.date_paiement}
+                            onChange={e => setPaiementForm(f => ({ ...f, date_paiement: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 font-semibold uppercase mb-1 block">👤 Encaissé par</label>
+                          <input
+                            className="input text-sm"
+                            placeholder="Nom de la personne..."
+                            value={paiementForm.encaisse_par}
+                            onChange={e => setPaiementForm(f => ({ ...f, encaisse_par: e.target.value }))}
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="text-xs text-gray-500 font-semibold uppercase mb-1 block">Notes (optionnel)</label>
@@ -361,15 +384,18 @@ export default function Pelerins() {
                     <div className="space-y-1.5">
                       <div className="text-xs text-gray-400 uppercase font-semibold mb-1">Historique</div>
                       {paiements.map(p => (
-                        <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg text-sm">
-                          <span>{MODE_ICONS[p.mode] || '💳'}</span>
-                          <span className="font-semibold text-gray-700">{(p.montant||0).toLocaleString('fr-FR')} FCFA</span>
-                          <span className="text-xs text-gray-400">{p.mode}</span>
-                          {p.notes && <span className="text-xs text-gray-400 flex-1 truncate">— {p.notes}</span>}
-                          <span className="text-xs text-gray-300 ml-auto">
-                            {p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : ''}
-                          </span>
-                          <button onClick={() => supprimerPaiement(p)} className="text-red-300 hover:text-red-500 text-xs ml-1">✕</button>
+                        <div key={p.id} className="px-3 py-2 bg-gray-50 rounded-lg text-sm space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span>{MODE_ICONS[p.mode] || '💳'}</span>
+                            <span className="font-semibold text-gray-700">{(p.montant||0).toLocaleString('fr-FR')} FCFA</span>
+                            <span className="text-xs text-gray-400">{p.mode}</span>
+                            <button onClick={() => supprimerPaiement(p)} className="text-red-300 hover:text-red-500 text-xs ml-auto">✕</button>
+                          </div>
+                          <div className="flex gap-3 text-xs text-gray-400">
+                            <span>📅 {p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : (p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : '—')}</span>
+                            {p.encaisse_par && <span>👤 {p.encaisse_par}</span>}
+                            {p.notes && <span>— {p.notes}</span>}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -518,6 +544,11 @@ export default function Pelerins() {
           </div>
           <div className="col-span-2"><label className="label">Notes internes</label>
             <textarea className="input" rows={2} value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Notes de l'équipe..." style={{minHeight:'60px',resize:'vertical'}} />
+          </div>
+          <div>
+            <label className="label">👤 Dossier créé par</label>
+            <input className="input" value={form.cree_par || ''} onChange={e => set('cree_par', e.target.value)} placeholder="Votre nom..." disabled={!!form.id} />
+            {form.id && <p className="text-xs text-gray-400 mt-1">Champ non modifiable après création.</p>}
           </div>
           <div className="col-span-2">
             <label className="label">Documents reçus</label>
