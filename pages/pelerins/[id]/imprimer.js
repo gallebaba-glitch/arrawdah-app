@@ -165,7 +165,7 @@ export default function FicheImpression() {
             <Row label="Expiration" value={pelerin.exp_passeport || '—'} />
             <Row label="Passeport" value={pelerin.doc_passeport ? '✓ Reçu' : '✗ Manquant'} ok={pelerin.doc_passeport} />
             <Row label="Photo" value={pelerin.doc_photo ? '✓ Reçue' : '✗ Manquante'} ok={pelerin.doc_photo} />
-            <Row label="Vaccin méningite" value={pelerin.doc_vaccin ? '✓ Reçu' : '✗ Manquant'} ok={pelerin.doc_vaccin} />
+            <Row label="Vaccination" value={pelerin.doc_vaccin ? '✓ Reçue' : '✗ Manquante'} ok={pelerin.doc_vaccin} />
             <Row label="Visa Oumrah" value={pelerin.doc_visa ? '✓ Obtenu' : '✗ En attente'} ok={pelerin.doc_visa} />
             <Row label="Billet avion" value={pelerin.doc_billet ? '✓ Émis' : '✗ En attente'} ok={pelerin.doc_billet} />
           </Section>
@@ -213,19 +213,6 @@ export default function FicheImpression() {
             <Row label="Guide" value={depart?.guide || '—'} />
             <Row label="Hôtel La Mecque" value={depart?.hotel_mecque || '—'} />
             <Row label="Hôtel Médine" value={depart?.hotel_medine || '—'} />
-          </div>
-        </Section>
-
-        {/* ══ NOTES ══ */}
-        <Section title="NOTES INTERNES">
-          <div style={{
-            minHeight: '50px',
-            fontSize: '10pt',
-            color: pelerin.notes ? '#111' : '#AAA',
-            fontStyle: pelerin.notes ? 'normal' : 'italic',
-            lineHeight: '1.6',
-          }}>
-            {pelerin.notes || 'Aucune note interne'}
           </div>
         </Section>
 
