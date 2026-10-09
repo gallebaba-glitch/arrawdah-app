@@ -11,14 +11,17 @@ const STATUT_CONFIG = {
   rentre:   { label: 'Rentré',   class: 'badge-gray', color: '#6B7280' },
 }
 
+const MODE_PAIEMENT = ['Wave', 'Orange Money', 'Chèque', 'Cash']
+
 const EMPTY = {
   prenom: '', nom: '', telephone: '', tel_famille: '',
   date_naissance: '', sexe: 'homme', premiere_oumrah: true, formule: 'ZEN', prix_total: 0,
   montant_paye: 0, depart_id: '', num_passeport: '',
   exp_passeport: '', medical: '', statut: 'inscrit',
+  passeport_recu: false,
   doc_passeport: false, doc_photo: false, doc_vaccin: false,
   doc_visa: false, doc_billet: false, notes: '',
-  option_tgv: false, ville_depart_tgv: '', ville_arrivee_tgv: '', date_tgv: '', montant_tgv: 0,
+  option_tgv: false, montant_tgv: 0,
 }
 
 function getInitials(p) {
@@ -45,6 +48,12 @@ export default function Pelerins() {
   const [filterStatut, setFilterStatut] = useState('tous')
   const [filterFormule, setFilterFormule] = useState('tous')
 
+  // Paiements
+  const [paiements, setPaiements] = useState([])
+  const [paiementForm, setPaiementForm] = useState({ montant: '', mode: 'Wave', notes: '' })
+  const [paiementLoading, setPaiementLoading] = useState(false)
+  const [showPaiementForm, setShowPaiementForm] = useState(false)
+
   useEffect(() => { fetchAll() }, [])
 
   async function fetchAll() {
@@ -58,11 +67,27 @@ export default function Pelerins() {
     setLoading(false)
   }
 
+  async function fetchPaiements(pelerinId) {
+    const { data } = await supabase
+      .from('paiements')
+      .select('*')
+      .eq('pelerin_id', pelerinId)
+      .order('created_at', { ascending: false })
+    setPaiements(data || [])
+  }
+
   function openNew() { setForm(EMPTY); setModalOpen(true) }
 
   async function save() {
     if (!form.prenom || !form.nom) { alert('Prénom et nom obligatoires'); return }
-    const data = { ...form, depart_id: form.depart_id || null }
+    // Si passeport non reçu, on efface les champs passeport
+    const data = {
+      ...form,
+      depart_id: form.depart_id || null,
+      num_passeport: form.passeport_recu ? form.num_passeport : '',
+      exp_passeport: form.passeport_recu ? form.exp_passeport : '',
+      doc_passeport: form.passeport_recu ? form.doc_passeport : false,
+    }
     if (form.id) {
       await supabase.from('pelerins').update(data).eq('id', form.id)
     } else {
@@ -71,6 +96,39 @@ export default function Pelerins() {
     setModalOpen(false)
     setSelected(null)
     fetchAll()
+  }
+
+  async function ajouterPaiement(pelerinId) {
+    if (!paiementForm.montant || isNaN(parseInt(paiementForm.montant))) {
+      alert('Montant invalide'); return
+    }
+    setPaiementLoading(true)
+    const montant = parseInt(paiementForm.montant)
+    await supabase.from('paiements').insert([{
+      pelerin_id: pelerinId,
+      montant,
+      mode: paiementForm.mode,
+      notes: paiementForm.notes || null,
+    }])
+    // Mettre à jour montant_paye dans pelerins
+    const pelerin = pelerins.find(p => p.id === pelerinId)
+    const nouveauTotal = (pelerin?.montant_paye || 0) + montant
+    await supabase.from('pelerins').update({ montant_paye: nouveauTotal }).eq('id', pelerinId)
+    setPaiementForm({ montant: '', mode: 'Wave', notes: '' })
+    setShowPaiementForm(false)
+    setPaiementLoading(false)
+    fetchAll()
+    fetchPaiements(pelerinId)
+  }
+
+  async function supprimerPaiement(paiement) {
+    if (!confirm('Supprimer ce paiement ?')) return
+    await supabase.from('paiements').delete().eq('id', paiement.id)
+    const pelerin = pelerins.find(p => p.id === paiement.pelerin_id)
+    const nouveauTotal = Math.max(0, (pelerin?.montant_paye || 0) - paiement.montant)
+    await supabase.from('pelerins').update({ montant_paye: nouveauTotal }).eq('id', paiement.pelerin_id)
+    fetchAll()
+    fetchPaiements(paiement.pelerin_id)
   }
 
   async function supprimer(id) {
@@ -93,7 +151,20 @@ export default function Pelerins() {
   const getDep = id => departs.find(d => d.id == id)?.nom || '—'
 
   const sel = selected ? pelerins.find(x => x.id === selected) : null
-  const pct = sel ? Math.round(((sel.montant_paye || 0) / (sel.prix_total || 1)) * 100) : 0
+  const totalSel = sel ? (sel.prix_total || 0) + (sel.option_tgv ? (sel.montant_tgv || 0) : 0) : 0
+  const pct = sel && totalSel > 0 ? Math.round(((sel.montant_paye || 0) / totalSel) * 100) : 0
+
+  // Quand on sélectionne un pèlerin, charger ses paiements
+  useEffect(() => {
+    if (selected) {
+      fetchPaiements(selected)
+      setShowPaiementForm(false)
+    } else {
+      setPaiements([])
+    }
+  }, [selected])
+
+  const MODE_ICONS = { 'Wave': '🌊', 'Orange Money': '🟠', 'Chèque': '📄', 'Cash': '💵' }
 
   return (
     <Layout title={`Pèlerins (${pelerins.length})`} action={{ label: '+ Nouveau pèlerin', fn: openNew }}>
@@ -130,19 +201,18 @@ export default function Pelerins() {
             <div className="card overflow-hidden">
               {filtered.map((p, i) => {
                 const ds = getDossierStatus(p)
-                const paiePct = Math.round(((p.montant_paye||0)/(p.prix_total||1))*100)
+                const tot = (p.prix_total||0) + (p.option_tgv ? (p.montant_tgv||0) : 0)
+                const paiePct = tot > 0 ? Math.round(((p.montant_paye||0)/tot)*100) : 0
                 const isActive = selected === p.id
                 return (
                   <div key={p.id}
                     onClick={() => setSelected(isActive ? null : p.id)}
                     className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-all border-b border-gray-50 last:border-0
                       ${isActive ? 'bg-green-50 border-l-4 border-l-green-700' : 'hover:bg-gray-50'}`}>
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-yellow-700"
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                          style={{ background: '#0F5229', color: '#C9A84C' }}>
                       {getInitials(p)}
                     </div>
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-gray-800 truncate">{p.prenom} {p.nom}</div>
                       <div className="text-xs text-gray-400 mt-0.5">
@@ -150,18 +220,15 @@ export default function Pelerins() {
                         {p.option_tgv && <span className="ml-1 text-blue-500">🚄 TGV</span>}
                       </div>
                     </div>
-                    {/* Statut paiement */}
                     <div className="text-right flex-shrink-0">
                       <div className="text-xs font-semibold mb-1" style={{ color: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}>{paiePct}%</div>
                       <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: paiePct + '%', background: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}/>
                       </div>
                     </div>
-                    {/* Dossier */}
                     <span className={`badge ${ds === 'complet' ? 'badge-ok' : ds === 'incomplet' ? 'badge-err' : 'badge-warn'}`}>
                       {ds === 'complet' ? '✓' : ds === 'incomplet' ? '✗' : '⚠'}
                     </span>
-                    {/* Statut */}
                     <span className={`badge ${STATUT_CONFIG[p.statut]?.class || 'badge-gray'}`}>
                       {STATUT_CONFIG[p.statut]?.label || p.statut}
                     </span>
@@ -187,14 +254,14 @@ export default function Pelerins() {
                 <button onClick={() => setSelected(null)} className="text-white/60 hover:text-white text-xl">✕</button>
               </div>
 
-              <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+              <div className="p-5 space-y-5 max-h-[80vh] overflow-y-auto">
                 {/* Infos */}
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { l: 'Téléphone', v: sel.telephone || '—' },
                     { l: 'Famille', v: sel.tel_famille || '—' },
-                    { l: 'Passeport', v: sel.num_passeport || '—' },
-                    { l: 'Exp. passeport', v: sel.exp_passeport || '—' },
+                    { l: 'Passeport', v: sel.passeport_recu ? (sel.num_passeport || '—') : '⚠ Non reçu' },
+                    { l: 'Exp. passeport', v: sel.passeport_recu ? (sel.exp_passeport || '—') : '—' },
                     { l: 'Médical', v: sel.medical || 'Aucun' },
                     { l: 'Statut', v: STATUT_CONFIG[sel.statut]?.label || sel.statut },
                   ].map(({ l, v }) => (
@@ -209,28 +276,10 @@ export default function Pelerins() {
                 {sel.option_tgv && (
                   <div>
                     <div className="font-semibold text-gray-700 mb-2 text-sm">🚄 Option TGV</div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Départ</div>
-                          <div className="text-sm font-semibold text-blue-800">{sel.ville_depart_tgv || '—'}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Arrivée</div>
-                          <div className="text-sm font-semibold text-blue-800">{sel.ville_arrivee_tgv || '—'}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Date</div>
-                          <div className="text-sm font-semibold text-blue-800">
-                            {sel.date_tgv ? new Date(sel.date_tgv).toLocaleDateString('fr-FR') : '—'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Montant TGV</div>
-                          <div className="text-sm font-bold text-blue-900">
-                            {(sel.montant_tgv || 0).toLocaleString('fr-FR')} FCFA
-                          </div>
-                        </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="text-xs text-blue-400 uppercase font-semibold mb-0.5">Montant TGV</div>
+                      <div className="text-sm font-bold text-blue-900">
+                        {(sel.montant_tgv || 0).toLocaleString('fr-FR')} FCFA
                       </div>
                     </div>
                   </div>
@@ -238,20 +287,94 @@ export default function Pelerins() {
 
                 {/* Paiement */}
                 <div>
-                  <div className="font-semibold text-gray-700 mb-2 text-sm">💰 Paiement</div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold text-gray-700 text-sm">💰 Paiements</div>
+                    <button
+                      onClick={() => setShowPaiementForm(v => !v)}
+                      className="text-xs px-3 py-1 rounded-full font-semibold"
+                      style={{ background: '#E8F5EE', color: '#0F5229' }}>
+                      {showPaiementForm ? '✕ Annuler' : '+ Ajouter un paiement'}
+                    </button>
+                  </div>
+
+                  {/* Formulaire ajout paiement */}
+                  {showPaiementForm && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-500 font-semibold uppercase mb-1 block">Montant (FCFA)</label>
+                          <input
+                            className="input text-sm"
+                            type="number"
+                            placeholder="Ex : 500000"
+                            value={paiementForm.montant}
+                            onChange={e => setPaiementForm(f => ({ ...f, montant: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 font-semibold uppercase mb-1 block">Mode de paiement</label>
+                          <select
+                            className="input text-sm"
+                            value={paiementForm.mode}
+                            onChange={e => setPaiementForm(f => ({ ...f, mode: e.target.value }))}>
+                            {MODE_PAIEMENT.map(m => <option key={m} value={m}>{MODE_ICONS[m]} {m}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 font-semibold uppercase mb-1 block">Notes (optionnel)</label>
+                        <input
+                          className="input text-sm"
+                          placeholder="Ex : 1er versement..."
+                          value={paiementForm.notes}
+                          onChange={e => setPaiementForm(f => ({ ...f, notes: e.target.value }))}
+                        />
+                      </div>
+                      <button
+                        onClick={() => ajouterPaiement(sel.id)}
+                        disabled={paiementLoading}
+                        className="btn btn-primary w-full text-sm">
+                        {paiementLoading ? 'Enregistrement...' : '✓ Enregistrer le paiement'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Résumé financier */}
                   <div className="text-2xl font-bold mb-1" style={{ color: '#1A7A3C' }}>
                     {(sel.montant_paye||0).toLocaleString('fr-FR')} FCFA
-                    <span className="text-sm font-normal text-gray-400 ml-1">/ {(sel.prix_total||0).toLocaleString('fr-FR')}</span>
+                    <span className="text-sm font-normal text-gray-400 ml-1">/ {totalSel.toLocaleString('fr-FR')}</span>
                   </div>
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-1">
-                    <div className="h-full rounded-full" style={{ width: pct + '%', background: '#1A7A3C' }}/>
+                    <div className="h-full rounded-full" style={{ width: Math.min(pct, 100) + '%', background: '#1A7A3C' }}/>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-400">
+                  <div className="flex justify-between text-xs text-gray-400 mb-3">
                     <span>{pct}% payé</span>
                     <span className={pct < 100 ? 'text-red-500 font-semibold' : 'text-green-600 font-semibold'}>
-                      {pct < 100 ? 'Reste : ' + ((sel.prix_total||0)-(sel.montant_paye||0)).toLocaleString('fr-FR') + ' FCFA' : '✓ Soldé'}
+                      {pct < 100 ? 'Reste : ' + (totalSel-(sel.montant_paye||0)).toLocaleString('fr-FR') + ' FCFA' : '✓ Soldé'}
                     </span>
                   </div>
+
+                  {/* Historique paiements */}
+                  {paiements.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="text-xs text-gray-400 uppercase font-semibold mb-1">Historique</div>
+                      {paiements.map(p => (
+                        <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg text-sm">
+                          <span>{MODE_ICONS[p.mode] || '💳'}</span>
+                          <span className="font-semibold text-gray-700">{(p.montant||0).toLocaleString('fr-FR')} FCFA</span>
+                          <span className="text-xs text-gray-400">{p.mode}</span>
+                          {p.notes && <span className="text-xs text-gray-400 flex-1 truncate">— {p.notes}</span>}
+                          <span className="text-xs text-gray-300 ml-auto">
+                            {p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : ''}
+                          </span>
+                          <button onClick={() => supprimerPaiement(p)} className="text-red-300 hover:text-red-500 text-xs ml-1">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {paiements.length === 0 && (
+                    <div className="text-xs text-gray-300 italic">Aucun paiement enregistré</div>
+                  )}
                 </div>
 
                 {/* Documents */}
@@ -278,7 +401,14 @@ export default function Pelerins() {
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2 border-t border-gray-100 flex-wrap">
-                  <button onClick={() => { setForm({ ...sel, depart_id: sel.depart_id || '' }); setModalOpen(true) }}
+                  <button onClick={() => {
+                    setForm({
+                      ...sel,
+                      depart_id: sel.depart_id || '',
+                      passeport_recu: sel.passeport_recu || (!!sel.num_passeport),
+                    })
+                    setModalOpen(true)
+                  }}
                     className="btn btn-primary flex-1 text-sm">✏️ Modifier</button>
                   <a href={`/pelerins/${sel.id}/imprimer`} target="_blank"
                     className="btn text-sm flex items-center gap-1"
@@ -332,15 +462,51 @@ export default function Pelerins() {
             <input className="input" type="number" value={form.prix_total || ''} onChange={e => set('prix_total', parseInt(e.target.value)||0)} placeholder="Saisir le prix de cette saison..." />
             <p className="text-xs text-gray-400 mt-1">Le prix varie selon les saisons — saisir le montant exact.</p>
           </div>
-          <div><label className="label">Montant payé (FCFA)</label><input className="input" type="number" value={form.montant_paye} onChange={e => set('montant_paye', parseInt(e.target.value)||0)} /></div>
           <div><label className="label">Départ</label>
             <select className="input" value={form.depart_id} onChange={e => set('depart_id', e.target.value)}>
               <option value="">— Choisir un départ —</option>
               {departs.map(d => <option key={d.id} value={d.id}>{d.nom}</option>)}
             </select>
           </div>
-          <div><label className="label">N° Passeport</label><input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" /></div>
-          <div><label className="label">Expiration passeport</label><input className="input" type="date" value={form.exp_passeport} onChange={e => set('exp_passeport', e.target.value)} /></div>
+
+          {/* ── PASSEPORT ── */}
+          <div className="col-span-2">
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-2 flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.passeport_recu || false}
+                    onChange={e => set('passeport_recu', e.target.checked)}
+                    className="w-4 h-4 accent-green-700"
+                  />
+                  <span className="font-semibold text-gray-700 text-sm">📘 Passeport reçu</span>
+                </label>
+                {!form.passeport_recu && (
+                  <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Non reçu — à compléter plus tard</span>
+                )}
+              </div>
+              {form.passeport_recu && (
+                <div className="p-4 bg-white grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">N° Passeport</label>
+                    <input className="input" value={form.num_passeport} onChange={e => set('num_passeport', e.target.value)} placeholder="SN123456" />
+                  </div>
+                  <div>
+                    <label className="label">Expiration passeport</label>
+                    <input className="input" type="date" value={form.exp_passeport} onChange={e => set('exp_passeport', e.target.value)} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input type="checkbox" checked={form.doc_passeport} onChange={e => set('doc_passeport', e.target.checked)} className="w-4 h-4 accent-green-700" />
+                      ✅ Copie passeport reçue dans le dossier
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="col-span-2"><label className="label">Informations médicales</label><input className="input" value={form.medical} onChange={e => set('medical', e.target.value)} placeholder="Tension, diabète..." /></div>
           <div><label className="label">Première Oumrah ?</label>
             <select className="input" value={form.premiere_oumrah ? 'true' : 'false'} onChange={e => set('premiere_oumrah', e.target.value === 'true')}>
@@ -354,7 +520,7 @@ export default function Pelerins() {
           <div className="col-span-2">
             <label className="label">Documents reçus</label>
             <div className="flex flex-wrap gap-4 mt-2">
-              {[['doc_passeport','Passeport'],['doc_photo','Photo'],['doc_vaccin','Vaccination'],['doc_visa','Visa'],['doc_billet','Billet']].map(([k,l]) => (
+              {[['doc_photo','Photo'],['doc_vaccin','Vaccination'],['doc_visa','Visa'],['doc_billet','Billet']].map(([k,l]) => (
                 <label key={k} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={form[k]} onChange={e => set(k, e.target.checked)} className="w-4 h-4 accent-green-700" />
                   {l}
@@ -373,41 +539,9 @@ export default function Pelerins() {
                 </label>
               </div>
               {form.option_tgv && (
-                <div className="p-4 bg-white grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="label text-blue-700">Ville de départ</label>
-                    <select className="input" value={form.ville_depart_tgv || ''} onChange={e => {
-                      const dep = e.target.value
-                      const arr = dep === 'Médine' ? 'Djeddah' : dep === 'Djeddah' ? 'Médine' : ''
-                      set('ville_depart_tgv', dep)
-                      set('ville_arrivee_tgv', arr)
-                    }}>
-                      <option value="">— Choisir —</option>
-                      <option value="Médine">Médine</option>
-                      <option value="Djeddah">Djeddah</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label text-blue-700">Ville d'arrivée</label>
-                    <select className="input" value={form.ville_arrivee_tgv || ''} onChange={e => {
-                      const arr = e.target.value
-                      const dep = arr === 'Médine' ? 'Djeddah' : arr === 'Djeddah' ? 'Médine' : ''
-                      set('ville_arrivee_tgv', arr)
-                      set('ville_depart_tgv', dep)
-                    }}>
-                      <option value="">— Choisir —</option>
-                      <option value="Médine">Médine</option>
-                      <option value="Djeddah">Djeddah</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label text-blue-700">Date du TGV</label>
-                    <input className="input" type="date" value={form.date_tgv || ''} onChange={e => set('date_tgv', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="label text-blue-700">Montant TGV (FCFA)</label>
-                    <input className="input" type="number" value={form.montant_tgv || ''} onChange={e => set('montant_tgv', parseInt(e.target.value)||0)} placeholder="Ex : 50000" />
-                  </div>
+                <div className="p-4 bg-white">
+                  <label className="label text-blue-700">Montant TGV (FCFA)</label>
+                  <input className="input" type="number" value={form.montant_tgv || ''} onChange={e => set('montant_tgv', parseInt(e.target.value)||0)} placeholder="Ex : 150000" />
                 </div>
               )}
             </div>
