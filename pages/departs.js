@@ -64,15 +64,43 @@ function buildChambres(pelerins) {
 
   // Répartir automatiquement les non assignés par groupe formule+sexe
   if (unassigned.length > 0) {
+    // Les membres du staff vont tous dans une même chambre
+    const staffs = unassigned.filter(p => p.is_staff)
+    const nonStaff = unassigned.filter(p => !p.is_staff)
+
+    let nextNum = chambres.length > 0 ? Math.max(...chambres.map(c => c.numero)) + 1 : 1
+
+    const staffH = staffs.filter(p => p.sexe !== 'femme')
+    const staffF = staffs.filter(p => p.sexe === 'femme')
+    if (staffH.length > 0) {
+      chambres.push({
+        id: `auto_staff_h`,
+        numero: nextNum++,
+        formule: 'STAFF',
+        sexe: 'homme',
+        cap: staffH.length,
+        pelerins: staffH,
+        saved: false,
+      })
+    }
+    if (staffF.length > 0) {
+      chambres.push({
+        id: `auto_staff_f`,
+        numero: nextNum++,
+        formule: 'STAFF',
+        sexe: 'femme',
+        cap: staffF.length,
+        pelerins: staffF,
+        saved: false,
+      })
+    }
+
     const g = {}
-    unassigned.forEach(p => {
+    nonStaff.forEach(p => {
       const k = `${p.formule}_${p.sexe||'homme'}`
       if (!g[k]) g[k] = []
       g[k].push(p)
     })
-
-    // Numéro de départ = max des chambres existantes + 1
-    let nextNum = chambres.length > 0 ? Math.max(...chambres.map(c => c.numero)) + 1 : 1
 
     Object.entries(g).forEach(([key, liste]) => {
       if (!liste.length) return
@@ -636,17 +664,22 @@ export default function Departs() {
                       ) : chambres.map(ch => (
                         <div key={ch.id} className="border rounded-lg overflow-hidden mb-3" style={{ borderColor: '#E5EDE8' }}>
                           <div className="flex items-center justify-between px-3 py-2"
-                            style={{ background: ch.sexe === 'femme' ? '#FFF0F6' : '#EFF8FF' }}>
-                            <div className="text-xs font-bold text-gray-700">
-                              Chambre {ch.numero} — {
-                                (() => {
-                                  const h = ch.pelerins.filter(p => p.sexe !== 'femme').length
-                                  const f = ch.pelerins.filter(p => p.sexe === 'femme').length
-                                  if (h > 0 && f > 0) return '👫 Couple'
-                                  if (f > 0) return '👩 Femmes'
-                                  return '👨 Hommes'
-                                })()
-                              } · {ch.formule}
+                            style={{ background: ch.formule === 'STAFF' ? '#FFFBEB' : ch.sexe === 'femme' ? '#FFF0F6' : '#EFF8FF' }}>
+                            <div className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                              Chambre {ch.numero} —{' '}
+                              {ch.formule === 'STAFF' ? (
+                                <span style={{ color: '#92400E' }}>🎟️ Staff — {ch.sexe === 'femme' ? '👩 Femmes' : '👨 Hommes'}</span>
+                              ) : (
+                                <>
+                                  {(() => {
+                                    const h = ch.pelerins.filter(p => p.sexe !== 'femme').length
+                                    const f = ch.pelerins.filter(p => p.sexe === 'femme').length
+                                    if (h > 0 && f > 0) return '👫 Couple'
+                                    if (f > 0) return '👩 Femmes'
+                                    return '👨 Hommes'
+                                  })()} · {ch.formule}
+                                </>
+                              )}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
