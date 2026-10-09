@@ -89,9 +89,11 @@ export default function Pelerins() {
       doc_passeport: form.passeport_recu ? form.doc_passeport : false,
     }
     if (form.id) {
-      await supabase.from('pelerins').update(data).eq('id', form.id)
+      const { error } = await supabase.from('pelerins').update(data).eq('id', form.id)
+      if (error) { alert('Erreur modification : ' + error.message); return }
     } else {
-      await supabase.from('pelerins').insert([data])
+      const { error } = await supabase.from('pelerins').insert([data])
+      if (error) { alert('Erreur création : ' + error.message); return }
     }
     setModalOpen(false)
     setSelected(null)
