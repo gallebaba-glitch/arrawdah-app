@@ -4,6 +4,15 @@ import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import { supabase } from '../lib/supabase'
 
+// Noms des utilisateurs par email (même liste que facture.js)
+const USERS = {
+  'gallebaba@gmail.com':       'Ousmane Niang',
+  'mamyfall@icloud.com':       'Hajja Mamy Fall',
+  'o.solly@sollytrading.com':  'Sheikh Hussein Solly',
+  'madinaarawdah@gmail.com':   'Madina Diallo',
+  'mariemediagne79@gmail.com': 'Marieme Diagne',
+}
+
 const STATUT_CONFIG = {
   inscrit:  { label: 'Inscrit',  class: 'badge-warn', color: '#ED8936' },
   confirme: { label: 'Confirmé', class: 'badge-info', color: '#3B82F6' },
@@ -48,15 +57,32 @@ export default function Pelerins() {
   const [search, setSearch] = useState('')
   const [filterStatut, setFilterStatut] = useState('tous')
   const [filterFormule, setFilterFormule] = useState('tous')
+  const [currentUser, setCurrentUser] = useState('')
 
   // Paiements
   const [paiements, setPaiements] = useState([])
   const today = new Date().toISOString().split('T')[0]
   const [paiementForm, setPaiementForm] = useState({ montant: '', mode: 'Wave', notes: '', date_paiement: today, encaisse_par: '' })
+
+  // Pré-remplir encaisse_par dès que currentUser est connu
+  useEffect(() => {
+    if (currentUser) {
+      setPaiementForm(f => ({ ...f, encaisse_par: f.encaisse_par || currentUser }))
+    }
+  }, [currentUser])
   const [paiementLoading, setPaiementLoading] = useState(false)
   const [showPaiementForm, setShowPaiementForm] = useState(false)
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => {
+    fetchAll()
+    // Récupérer l'utilisateur connecté
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const nom = USERS[session.user.email] || session.user.email
+        setCurrentUser(nom)
+      }
+    })
+  }, [])
 
   async function fetchAll() {
     setLoading(true)
@@ -78,7 +104,7 @@ export default function Pelerins() {
     setPaiements(data || [])
   }
 
-  function openNew() { setForm(EMPTY); setModalOpen(true) }
+  function openNew() { setForm({ ...EMPTY, cree_par: currentUser }); setModalOpen(true) }
 
   async function save() {
     if (!form.prenom || !form.nom) { alert('Prénom et nom obligatoires'); return }
@@ -120,7 +146,7 @@ export default function Pelerins() {
     const pelerin = pelerins.find(p => p.id === pelerinId)
     const nouveauTotal = (pelerin?.montant_paye || 0) + montant
     await supabase.from('pelerins').update({ montant_paye: nouveauTotal }).eq('id', pelerinId)
-    setPaiementForm({ montant: '', mode: 'Wave', notes: '', date_paiement: today, encaisse_par: '' })
+    setPaiementForm({ montant: '', mode: 'Wave', notes: '', date_paiement: today, encaisse_par: currentUser })
     setShowPaiementForm(false)
     setPaiementLoading(false)
     fetchAll()
