@@ -32,6 +32,7 @@ const EMPTY = {
   doc_visa: false, doc_billet: false, notes: '',
   option_tgv: false, montant_tgv: 0,
   cree_par: '',
+  is_staff: false,
 }
 
 function getInitials(p) {
@@ -246,17 +247,26 @@ export default function Pelerins() {
                       {getInitials(p)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-800 truncate">{p.prenom} {p.nom}</div>
+                      <div className="font-semibold text-gray-800 truncate flex items-center gap-2">
+                        {p.prenom} {p.nom}
+                        {p.is_staff && <span className="text-xs px-1.5 py-0.5 rounded-full font-bold" style={{ background: '#FEF3C7', color: '#92400E' }}>STAFF</span>}
+                      </div>
                       <div className="text-xs text-gray-400 mt-0.5">
                         {getDep(p.depart_id)} · {p.formule} · {p.sexe === 'femme' ? '👩' : '👨'}
                         {p.option_tgv && <span className="ml-1 text-blue-500">🚄 TGV</span>}
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-xs font-semibold mb-1" style={{ color: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}>{paiePct}%</div>
-                      <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: paiePct + '%', background: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}/>
-                      </div>
+                      {p.is_staff ? (
+                        <div className="text-xs font-semibold" style={{ color: '#92400E' }}>Offert</div>
+                      ) : (
+                        <>
+                          <div className="text-xs font-semibold mb-1" style={{ color: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}>{paiePct}%</div>
+                          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: paiePct + '%', background: paiePct === 100 ? '#1A7A3C' : '#ED8936' }}/>
+                          </div>
+                        </>
+                      )}
                     </div>
                     <span className={`badge ${ds === 'complet' ? 'badge-ok' : ds === 'incomplet' ? 'badge-err' : 'badge-warn'}`}>
                       {ds === 'complet' ? '✓' : ds === 'incomplet' ? '✗' : '⚠'}
@@ -280,7 +290,10 @@ export default function Pelerins() {
                 <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
                      style={{ background: '#C9A84C', color: '#0F5229' }}>{getInitials(sel)}</div>
                 <div className="flex-1">
-                  <div className="text-white font-bold text-lg">{sel.prenom} {sel.nom}</div>
+                  <div className="text-white font-bold text-lg flex items-center gap-2">
+                    {sel.prenom} {sel.nom}
+                    {sel.is_staff && <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: '#FEF3C7', color: '#92400E' }}>STAFF</span>}
+                  </div>
                   <div className="text-sm mt-0.5" style={{ color: '#F0D080' }}>{getDep(sel.depart_id)} · {sel.formule}</div>
                 </div>
                 <button onClick={() => setSelected(null)} className="text-white/60 hover:text-white text-xl">✕</button>
@@ -513,8 +526,14 @@ export default function Pelerins() {
           </div>
           <div>
             <label className="label">Prix du package (FCFA)</label>
-            <input className="input" type="number" value={form.prix_total || ''} onChange={e => set('prix_total', parseInt(e.target.value)||0)} placeholder="Saisir le prix de cette saison..." />
-            <p className="text-xs text-gray-400 mt-1">Le prix varie selon les saisons — saisir le montant exact.</p>
+            {form.is_staff ? (
+              <div className="input bg-amber-50 border-amber-200 text-amber-700 font-bold flex items-center gap-2">
+                <span>🎟️</span> Offert — Staff (0 FCFA)
+              </div>
+            ) : (
+              <input className="input" type="number" value={form.prix_total || ''} onChange={e => set('prix_total', parseInt(e.target.value)||0)} placeholder="Saisir le prix de cette saison..." />
+            )}
+            {!form.is_staff && <p className="text-xs text-gray-400 mt-1">Le prix varie selon les saisons — saisir le montant exact.</p>}
           </div>
           <div><label className="label">Départ</label>
             <select className="input" value={form.depart_id} onChange={e => set('depart_id', e.target.value)}>
@@ -585,6 +604,38 @@ export default function Pelerins() {
                   {l}
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* ── STAFF ── */}
+          <div className="col-span-2">
+            <div className="border rounded-lg overflow-hidden" style={{ borderColor: form.is_staff ? '#FDE68A' : '#E5E7EB' }}>
+              <div className="px-4 py-3 flex items-center gap-3" style={{ background: form.is_staff ? '#FFFBEB' : '#F9FAFB' }}>
+                <label className="flex items-center gap-3 cursor-pointer flex-1">
+                  <input
+                    type="checkbox"
+                    checked={form.is_staff || false}
+                    onChange={e => {
+                      set('is_staff', e.target.checked)
+                      if (e.target.checked) set('prix_total', 0)
+                    }}
+                    className="w-4 h-4 accent-amber-600"
+                  />
+                  <div>
+                    <span className="font-semibold text-sm" style={{ color: form.is_staff ? '#92400E' : '#374151' }}>
+                      🎟️ Membre du staff
+                    </span>
+                    {form.is_staff && (
+                      <div className="text-xs mt-0.5" style={{ color: '#B45309' }}>
+                        Prix automatiquement mis à 0 FCFA — voyage offert
+                      </div>
+                    )}
+                  </div>
+                </label>
+                {form.is_staff && (
+                  <span className="text-xs px-2 py-1 rounded-full font-bold" style={{ background: '#FEF3C7', color: '#92400E' }}>STAFF</span>
+                )}
+              </div>
             </div>
           </div>
 
