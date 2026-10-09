@@ -80,12 +80,12 @@ export default function Pelerins() {
 
   async function save() {
     if (!form.prenom || !form.nom) { alert('Prénom et nom obligatoires'); return }
-    // Si passeport non reçu, on efface les champs passeport
+    // Si passeport non reçu, on envoie null pour les champs passeport
     const data = {
       ...form,
       depart_id: form.depart_id || null,
-      num_passeport: form.passeport_recu ? form.num_passeport : '',
-      exp_passeport: form.passeport_recu ? form.exp_passeport : '',
+      num_passeport: form.passeport_recu ? (form.num_passeport || null) : null,
+      exp_passeport: form.passeport_recu ? (form.exp_passeport || null) : null,
       doc_passeport: form.passeport_recu ? form.doc_passeport : false,
     }
     if (form.id) {
