@@ -205,7 +205,7 @@ export default function Facture() {
               Détails du voyage
             </div>
             <div style={{ padding:'12px 14px' }}>
-              <InfoRow label="Formule" value={pelerin.formule === 'ZEN' ? '🌿 Formule ZEN' : '⭐ Formule ELITE'} bold />
+              <InfoRow label="Formule" value={pelerin.formule === 'ZEN' ? '🌿 Formule ZEN' : pelerin.formule === 'ELITE' ? '⭐ Formule ELITE' : pelerin.formule === 'RAHMA' ? '🤲 Formule RAHMA' : '✏️ Formule Personnalisée'} bold />
               <InfoRow label="Départ" value={depart?.nom || '—'} />
               <InfoRow label="Date" value={
                 depart
@@ -259,7 +259,7 @@ export default function Facture() {
             fontSize:'11pt',
           }}>
             <span style={{ color:'#333' }}>
-              Pack Oumrah — Formule {pelerin.formule}
+              Pack Oumrah — Formule {pelerin.formule === 'ZEN' ? '🌿 ZEN' : pelerin.formule === 'ELITE' ? '⭐ ELITE' : pelerin.formule === 'RAHMA' ? '🤲 RAHMA' : '✏️ Personnalisée'}
             </span>
             <span style={{ textAlign:'right', fontWeight:'bold', color:'#111' }}>
               {prixBase.toLocaleString('fr-FR')} FCFA
